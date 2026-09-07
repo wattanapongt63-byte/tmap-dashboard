@@ -209,12 +209,16 @@ var PEOPLE=[], PICKED=[], SPINNING=false;
 function loadPicked(){ try{ return JSON.parse(localStorage.getItem(STORE)||"[]"); }catch(e){ return []; } }
 function savePicked(){ try{ localStorage.setItem(STORE, JSON.stringify(PICKED)); }catch(e){} }
 PICKED = loadPicked();
-var EXCLUDED = (function(){ try{ return JSON.parse(localStorage.getItem(EXSTORE)||"{}"); }catch(e){ return {}; } })();
+function nkey(s){ return String(s==null?"":s).replace(/[\s\u00a0]+/g,""); }   // เทียบชื่อโดยไม่สนช่องว่าง (ชีตมีเว้นวรรคซ้อนบ่อย)
+var EXCLUDED = (function(){
+  var raw={}; try{ raw=JSON.parse(localStorage.getItem(EXSTORE)||"{}")||{}; }catch(e){ raw={}; }
+  var out={}; Object.keys(raw).forEach(function(k){ out[nkey(k)]=1; }); return out;   // แปลงคีย์เก่าให้เป็นรูปแบบใหม่
+})();
 function saveExcluded(){ try{ localStorage.setItem(EXSTORE, JSON.stringify(EXCLUDED)); }catch(e){} }
 var FROM_LINK = false;
 if(qp.has("lock")){                                   // รับรายชื่อล็อกที่ส่งมากับลิงก์จากหน้าจัดการรายชื่อ
   EXCLUDED = {};
-  (qp.get("lock")||"").split("~").map(function(x){ return x.trim(); }).filter(Boolean)
+  (qp.get("lock")||"").split("~").map(function(x){ return nkey(x); }).filter(Boolean)
     .forEach(function(n){ EXCLUDED[n]=1; });
   saveExcluded(); FROM_LINK = true;
 }
@@ -224,10 +228,10 @@ function filtered(){
   return PEOPLE.filter(function(p){ return !a || p.amphoe===a; });
 }
 function pool(){
-  var list=filtered().filter(function(p){ return !EXCLUDED[p.name]; });
+  var list=filtered().filter(function(p){ return !EXCLUDED[nkey(p.name)]; });
   if(!$("optNoRepeat").checked) return list;
-  var used={}; PICKED.forEach(function(p){ used[p.name]=1; });
-  return list.filter(function(p){ return !used[p.name]; });
+  var used={}; PICKED.forEach(function(p){ used[nkey(p.name)]=1; });
+  return list.filter(function(p){ return !used[nkey(p.name)]; });
 }
 function unitText(p){
   if(!$("optShowUnit").checked) return "";
@@ -343,16 +347,16 @@ function render(){
   var list=filtered(), left=pool().length;
   $("poolChip").innerHTML='รายชื่อในกลุ่ม <b>'+list.length+'</b> คน';
   $("leftN").textContent=left+" คน";
-  $("lockN").textContent=filtered().filter(function(p){ return EXCLUDED[p.name]; }).length+" คน";
-  var offN=list.filter(function(p){ return EXCLUDED[p.name]; }).length;
+  $("lockN").textContent=filtered().filter(function(p){ return EXCLUDED[nkey(p.name)]; }).length+" คน";
+  var offN=list.filter(function(p){ return EXCLUDED[nkey(p.name)]; }).length;
   $("poolHint").innerHTML="ขีดฆ่า = ถูกสุ่มไปแล้ว • <span style=\"color:#fca5a5\">เส้นประแดง = พักไว้ไม่เข้าร่วมสุ่ม ("+offN+" คน)</span> — <b>คลิกที่ชื่อ</b> เพื่อล็อก/ปลดล็อก (หรือใช้หน้า <a class=\"link\" href=\"./manage.html\">จัดการรายชื่อ</a> ติ๊กทีละหลายคน)";
-  var used={}; PICKED.forEach(function(p){ used[p.name]=1; });
+  var used={}; PICKED.forEach(function(p){ used[nkey(p.name)]=1; });
   $("pool").innerHTML=list.map(function(p){
-    var cls=(EXCLUDED[p.name]?"off":(used[p.name]?"done":""));
-    return '<span class="'+cls+'" data-n="'+esc(p.name)+'" title="'+esc(unitText(p)||p.name)+(EXCLUDED[p.name]?" (พักไว้ — คลิกเพื่อนำกลับ)":" (คลิกเพื่อพักไม่ให้ถูกสุ่ม)")+'">'+esc(p.name)+'</span>';
+    var k=nkey(p.name), cls=(EXCLUDED[k]?"off":(used[k]?"done":""));
+    return '<span class="'+cls+'" data-n="'+esc(p.name)+'" title="'+esc(unitText(p)||p.name)+(EXCLUDED[k]?" (ล็อกไว้ — คลิกเพื่อปลดล็อก)":" (คลิกเพื่อล็อกไม่ให้ถูกสุ่ม)")+'">'+esc(p.name)+'</span>';
   }).join("") || '<span>ไม่มีรายชื่อ</span>';
   $("pool").querySelectorAll("span[data-n]").forEach(function(el){
-    el.onclick=function(){ var n=el.getAttribute("data-n");
+    el.onclick=function(){ var n=nkey(el.getAttribute("data-n"));
       if(EXCLUDED[n]) delete EXCLUDED[n]; else EXCLUDED[n]=1;
       saveExcluded(); render(); };
   });
@@ -381,7 +385,7 @@ function load(cb){
       PEOPLE=buildPeople(res);
       fillAmphoe(); render();
       $("bigname").textContent="พร้อมสุ่มแล้ว";
-      var lockN=PEOPLE.filter(function(p){ return EXCLUDED[p.name]; }).length;
+      var lockN=PEOPLE.filter(function(p){ return EXCLUDED[nkey(p.name)]; }).length;
       $("eyebrow").textContent="มีรายชื่อ "+PEOPLE.length+" คน"+(lockN?(" (ล็อกไว้ "+lockN+" คน"+(FROM_LINK?" ตามลิงก์ที่ตั้งไว้":"")+")"):"")+" กดปุ่มเพื่อเริ่มสุ่ม";
       if(cb) cb();
     }catch(e){ $("err").style.display="block"; $("err").textContent="⚠️ ประมวลผลรายชื่อไม่สำเร็จ: "+e.message; }

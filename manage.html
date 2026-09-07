@@ -154,14 +154,18 @@ function buildPeople(res){
   return out;
 }
 
-var PEOPLE=[], EXCLUDED=(function(){ try{ return JSON.parse(localStorage.getItem(EXSTORE)||"{}"); }catch(e){ return {}; } })();
+function nkey(s){ return String(s==null?"":s).replace(/[\s\u00a0]+/g,""); }   // เทียบชื่อโดยไม่สนช่องว่าง
+var PEOPLE=[], EXCLUDED=(function(){
+  var raw={}; try{ raw=JSON.parse(localStorage.getItem(EXSTORE)||"{}")||{}; }catch(e){ raw={}; }
+  var out={}; Object.keys(raw).forEach(function(k){ out[nkey(k)]=1; }); return out;
+})();
 function save(){ try{ localStorage.setItem(EXSTORE, JSON.stringify(EXCLUDED)); }catch(e){} }
 function picked(){ try{ return JSON.parse(localStorage.getItem(PSTORE)||"[]"); }catch(e){ return []; } }
 
 // รับรายชื่อล็อกที่ส่งมากับลิงก์
 if(qp.has("lock")){
   var incoming=(qp.get("lock")||"").split("~").map(function(s){ return s.trim(); }).filter(Boolean);
-  EXCLUDED={}; incoming.forEach(function(n){ EXCLUDED[n]=1; }); save();
+  EXCLUDED={}; incoming.forEach(function(n){ EXCLUDED[nkey(n)]=1; }); save();
 }
 
 function visible(){
@@ -173,7 +177,7 @@ function visible(){
   });
 }
 function stats(){
-  var off=PEOPLE.filter(function(p){ return EXCLUDED[p.name]; }).length;
+  var off=PEOPLE.filter(function(p){ return EXCLUDED[nkey(p.name)]; }).length;
   $("sTotal").textContent=PEOPLE.length;
   $("sOn").textContent=(PEOPLE.length-off)+" คน";
   $("sOff").textContent=off+" คน";
@@ -183,12 +187,12 @@ function render(){
   list.forEach(function(p){ (groups[p.amphoe]=groups[p.amphoe]||[]).push(p); });
   var keys=Object.keys(groups).sort(function(a,b){ return a.localeCompare(b,"th"); });
   $("groups").innerHTML = keys.length ? keys.map(function(k){
-    var g=groups[k], off=g.filter(function(p){ return EXCLUDED[p.name]; }).length;
+    var g=groups[k], off=g.filter(function(p){ return EXCLUDED[nkey(p.name)]; }).length;
     return '<section class="group"><div class="ghead"><h2>'+esc(k)+'</h2>'+
       '<div class="tools" style="margin:0"><span class="n">เข้าร่วม '+(g.length-off)+' / '+g.length+' คน</span>'+
       '<button data-g="'+esc(k)+'" data-v="1">ติ๊กทั้งกลุ่ม</button><button data-g="'+esc(k)+'" data-v="0">ล็อกทั้งกลุ่ม</button></div></div>'+
       '<div class="list">'+g.map(function(p){
-        var lock=!!EXCLUDED[p.name];
+        var lock=!!EXCLUDED[nkey(p.name)];
         return '<label class="item'+(lock?" locked":"")+'"><input type="checkbox" data-n="'+esc(p.name)+'"'+(lock?"":" checked")+'>'+
           '<span class="tx"><b>'+esc(p.name)+'</b>'+(lock?'<span class="pin">ล็อกไว้</span>':'')+
           '<small>'+esc([p.pos,p.tambon].filter(Boolean).join(" • ")||"—")+'</small></span></label>';
@@ -197,16 +201,16 @@ function render(){
 
   $("groups").querySelectorAll("input[type=checkbox]").forEach(function(el){
     el.onchange=function(){
-      var n=el.getAttribute("data-n");
+      var disp=el.getAttribute("data-n"), n=nkey(disp);
       if(el.checked) delete EXCLUDED[n]; else EXCLUDED[n]=1;
-      save(); render(); toast(el.checked?("ปลดล็อก "+n+" แล้ว"):("ล็อก "+n+" ไม่ให้ถูกสุ่มแล้ว"));
+      save(); render(); toast(el.checked?("ปลดล็อก "+disp+" แล้ว"):("ล็อก "+disp+" ไม่ให้ถูกสุ่มแล้ว"));
     };
   });
   $("groups").querySelectorAll("button[data-g]").forEach(function(b){
     b.onclick=function(){
       var g=b.getAttribute("data-g"), on=b.getAttribute("data-v")==="1";
       PEOPLE.filter(function(p){ return p.amphoe===g; }).forEach(function(p){
-        if(on) delete EXCLUDED[p.name]; else EXCLUDED[p.name]=1;
+        if(on) delete EXCLUDED[nkey(p.name)]; else EXCLUDED[nkey(p.name)]=1;
       });
       save(); render(); toast(on?("ติ๊กทั้งกลุ่ม "+g):("ล็อกทั้งกลุ่ม "+g));
     };
@@ -230,17 +234,17 @@ function load(){
   });
 }
 function lockLink(){
-  var locked=PEOPLE.filter(function(p){ return EXCLUDED[p.name]; }).map(function(p){ return p.name; });
+  var locked=PEOPLE.filter(function(p){ return EXCLUDED[nkey(p.name)]; }).map(function(p){ return p.name; });
   var base=location.href.replace(/[^\/]*$/,"")+"random.html";
   return locked.length ? base+"?lock="+encodeURIComponent(locked.join("~")) : base;
 }
 $("q").oninput=render;
 $("selAmphoe").onchange=render;
 $("allOn").onclick=function(){ EXCLUDED={}; save(); render(); toast("ให้ทุกคนเข้าร่วมการสุ่มแล้ว"); };
-$("allOff").onclick=function(){ visible().forEach(function(p){ EXCLUDED[p.name]=1; }); save(); render(); toast("ล็อกรายชื่อที่แสดงอยู่ทั้งหมดแล้ว"); };
+$("allOff").onclick=function(){ visible().forEach(function(p){ EXCLUDED[nkey(p.name)]=1; }); save(); render(); toast("ล็อกรายชื่อที่แสดงอยู่ทั้งหมดแล้ว"); };
 $("onlyUnpicked").onclick=function(){
   var ps=picked(); if(!ps.length){ toast("ยังไม่มีใครถูกสุ่มในเครื่องนี้"); return; }
-  ps.forEach(function(p){ EXCLUDED[p.name]=1; }); save(); render(); toast("ล็อกผู้ที่ถูกสุ่มไปแล้ว "+ps.length+" คน");
+  ps.forEach(function(p){ EXCLUDED[nkey(p.name)]=1; }); save(); render(); toast("ล็อกผู้ที่ถูกสุ่มไปแล้ว "+ps.length+" คน");
 };
 $("reload").onclick=function(){ toast("กำลังโหลดรายชื่อใหม่…"); load(); };
 $("goPick").onclick=function(){ location.href=lockLink(); };
