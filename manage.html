@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>จัดการรายชื่อผู้เข้าร่วมการสุ่ม | Learning T-Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{ --ink:#eaf1ff; --muted:#9db0d0; --line:rgba(255,255,255,.14); --gold:#fbbf24; --ok:#34d399; --bad:#f87171; }
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font-family:'Sarabun',system-ui,sans-serif;min-height:100vh;padding-bottom:96px;
+  background:radial-gradient(1100px 600px at 12% -10%,#1e3a8a 0%,transparent 55%),
+             radial-gradient(900px 500px at 92% 108%,#0e7490 0%,transparent 55%),
+             linear-gradient(160deg,#070d1c,#0b1428 55%,#081020);background-attachment:fixed}
+.wrap{max-width:1120px;margin:0 auto;padding:16px}
+.head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:6px}
+h1{font-size:21px;margin:0;font-weight:700}
+.head p{margin:3px 0 0;font-size:13px;color:var(--muted);max-width:640px}
+button,select{font-family:inherit;font-size:13.5px;color:var(--ink);background:rgba(255,255,255,.09);
+  border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer;transition:.15s}
+button:hover,select:hover{background:rgba(255,255,255,.18)}
+select option{background:#0f1a30;color:#eaf1ff}
+a.link{color:#7dd3fc;text-decoration:none;font-size:13.5px}
+a.link:hover{text-decoration:underline}
+input[type=search]{font-family:inherit;font-size:14px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);
+  background:rgba(255,255,255,.07);color:var(--ink);min-width:230px;outline:0}
+.tools{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin:16px 0 14px}
+.group{background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin-bottom:13px}
+.ghead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.ghead h2{font-size:15.5px;margin:0;font-weight:600}
+.ghead .n{font-size:12.5px;color:var(--muted)}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px}
+label.item{display:flex;gap:11px;align-items:flex-start;padding:9px 11px;border-radius:12px;cursor:pointer;
+  border:1px solid transparent;transition:.12s}
+label.item:hover{background:rgba(255,255,255,.07)}
+label.item.locked{background:rgba(248,113,113,.09);border-color:rgba(248,113,113,.32)}
+label.item input{appearance:none;width:21px;height:21px;flex:none;margin-top:1px;border-radius:7px;
+  border:1.5px solid rgba(255,255,255,.4);background:transparent;cursor:pointer;position:relative;transition:.12s}
+label.item input:checked{background:var(--ok);border-color:var(--ok)}
+label.item input:checked:after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#08331f;font-size:14px;font-weight:800}
+label.item .tx{min-width:0;font-size:14px;line-height:1.35}
+label.item .tx small{display:block;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+label.item.locked .tx{color:#fecaca}
+label.item.locked .tx b{font-weight:600}
+.pin{font-size:11.5px;color:var(--bad);border:1px solid rgba(248,113,113,.4);border-radius:999px;padding:0 7px;margin-left:6px}
+.barfix{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(8,15,30,.92);backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);padding:11px 16px}
+.barin{max-width:1120px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.stat{display:flex;flex-wrap:wrap;gap:9px;align-items:center;font-size:13.5px;color:var(--muted)}
+.stat b{color:var(--ink)}
+.stat .ok{color:var(--ok);font-weight:700}
+.stat .bad{color:var(--bad);font-weight:700}
+.go{background:linear-gradient(96deg,#fcd34d,#fbbf24 45%,#f59e0b);color:#0b1020;border:0;font-weight:700;padding:10px 20px}
+.go:hover{background:linear-gradient(96deg,#fde68a,#fbbf24)}
+.note{background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.3);color:#bae6fd;border-radius:14px;
+  padding:11px 14px;font-size:13.5px;margin-bottom:14px;line-height:1.6}
+.err{background:rgba(248,113,113,.14);border:1px solid rgba(248,113,113,.4);color:#fecaca;border-radius:14px;
+  padding:11px 14px;font-size:14px;margin-bottom:12px;display:none}
+.toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(20px);background:#0f1a30;
+  border:1px solid var(--line);border-radius:999px;padding:9px 20px;font-size:13.5px;opacity:0;transition:.25s;z-index:40;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.skel{color:var(--muted);padding:26px 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>⚙️ จัดการรายชื่อผู้เข้าร่วมการสุ่ม</h1>
+      <p>ติ๊กถูก = เข้าร่วมการสุ่ม • เอาติ๊กออก = ล็อกไว้ ไม่ให้ถูกสุ่มเด็ดขาด (เช่น วิทยากร ทีมงาน คนที่ลา หรือคนที่นำเสนอไปแล้ว)</p>
+    </div>
+    <div class="tools" style="margin:0">
+      <a class="link" href="./random.html">🎲 หน้าสุ่มรายชื่อ</a>
+      <a class="link" href="./">📊 Dashboard</a>
+    </div>
+  </div>
+  <div class="err" id="err"></div>
+  <div class="note">
+    การตั้งค่านี้ <b>บันทึกอัตโนมัติ</b> และจำไว้ในเบราว์เซอร์เครื่องนี้ — ถ้าจะไปสุ่มจากเครื่องอื่น (เช่น คอมที่ต่อโปรเจกเตอร์)
+    ให้กด <b>“คัดลอกลิงก์พร้อมการล็อก”</b> ด้านล่าง แล้วเปิดลิงก์นั้นบนเครื่องนั้น รายชื่อที่ล็อกไว้จะติดไปด้วยทันที
+  </div>
+  <div class="tools">
+    <input type="search" id="q" placeholder="ค้นหาชื่อ / ตำแหน่ง / ตำบล…">
+    <select id="selAmphoe"></select>
+    <button id="allOn">✓ ติ๊กทั้งหมด</button>
+    <button id="allOff">✕ ล็อกทั้งหมด</button>
+    <button id="onlyUnpicked" title="ล็อกคนที่ถูกสุ่มไปแล้วในหน้าเกม">🔒 ล็อกคนที่ถูกสุ่มไปแล้ว</button>
+    <button id="reload">↻ โหลดรายชื่อใหม่</button>
+  </div>
+  <div id="groups"><div class="skel">กำลังโหลดรายชื่อจาก Google Sheets…</div></div>
+</div>
+<div class="barfix"><div class="barin">
+  <div class="stat">
+    <span>ทั้งหมด <b id="sTotal">-</b> คน</span>
+    <span>• เข้าร่วมสุ่ม <span class="ok" id="sOn">-</span></span>
+    <span>• ล็อกไว้ <span class="bad" id="sOff">-</span></span>
+  </div>
+  <div class="tools" style="margin:0">
+    <button id="copyLink">🔗 คัดลอกลิงก์พร้อมการล็อก</button>
+    <button class="go" id="goPick">ไปหน้าสุ่มรายชื่อ →</button>
+  </div>
+</div></div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+"use strict";
+var SHEET_ID="1fsl-HHFCxH7LKgL9-V-Ow9EB_jtD7_pRZwybhI0hvm8", GID=null;
+var EXSTORE="tmap_excluded_v1", PSTORE="tmap_picked_v1";
+var qp=new URLSearchParams(location.search);
+if(qp.get("sheet")) SHEET_ID=qp.get("sheet");
+if(qp.get("gid")) GID=qp.get("gid");
+
+var $=function(id){ return document.getElementById(id); };
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toast.t); toast.t=setTimeout(function(){ t.classList.remove("on"); },2200); }
+
+var cbSeq=0;
+function fetchSheet(cb){
+  var name="__mng_cb_"+(++cbSeq);
+  var url="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:json;responseHandler:"+name
+        +(GID?"&gid="+encodeURIComponent(GID):"")+"&headers=1&_="+Date.now();
+  var s=document.createElement("script"), done=false;
+  var t=setTimeout(function(){ if(done)return; done=true; clean(); cb(new Error("หมดเวลาเชื่อมต่อ Google Sheets")); },20000);
+  function clean(){ clearTimeout(t); try{delete window[name];}catch(e){window[name]=undefined;} if(s.parentNode)s.parentNode.removeChild(s); }
+  window[name]=function(res){ if(done)return; done=true; clean(); cb(null,res); };
+  s.onerror=function(){ if(done)return; done=true; clean(); cb(new Error("โหลดรายชื่อไม่สำเร็จ — ตรวจสอบการแชร์ชีต")); };
+  s.src=url; document.head.appendChild(s);
+}
+var OPT_RE=/^\s*[กขคงจฉ]\s*[.)]/;
+function buildPeople(res){
+  var cols=res.table.cols, rows=res.table.rows||[];
+  var cells=rows.map(function(r){ return (r.c||[]).map(function(c){ return c?c.v:null; }); });
+  var nameIdx=-1,amphoeIdx=-1,tambonIdx=-1,posIdx=-1;
+  cols.forEach(function(c,i){
+    var lab=c.label||""; if(c.type!=="string") return;
+    var vals=cells.map(function(r){return r[i];}).filter(function(v){ return v!=null&&String(v).trim()!==""; });
+    var hit=vals.filter(function(v){ return OPT_RE.test(String(v)); }).length;
+    if(vals.length && hit/vals.length>=0.5) return;
+    if(nameIdx<0 && /ชื่อ|นาม/.test(lab)) nameIdx=i;
+    else if(amphoeIdx<0 && /อำเภอ/.test(lab)) amphoeIdx=i;
+    else if(tambonIdx<0 && /ตำบล/.test(lab)) tambonIdx=i;
+    else if(posIdx<0 && /ตำแหน่ง/.test(lab)) posIdx=i;
+  });
+  var seen={}, out=[];
+  cells.forEach(function(r){
+    var nm=String(nameIdx>=0?(r[nameIdx]||""):"").trim(); if(!nm) return;
+    var k=nm.replace(/\s+/g,""); if(seen[k]) return; seen[k]=1;
+    out.push({ name:nm, amphoe:String(amphoeIdx>=0?(r[amphoeIdx]||""):"").trim()||"(ไม่ระบุหน่วยงาน)",
+      tambon:String(tambonIdx>=0?(r[tambonIdx]||""):"").trim(), pos:String(posIdx>=0?(r[posIdx]||""):"").trim() });
+  });
+  return out;
+}
+
+var PEOPLE=[], EXCLUDED=(function(){ try{ return JSON.parse(localStorage.getItem(EXSTORE)||"{}"); }catch(e){ return {}; } })();
+function save(){ try{ localStorage.setItem(EXSTORE, JSON.stringify(EXCLUDED)); }catch(e){} }
+function picked(){ try{ return JSON.parse(localStorage.getItem(PSTORE)||"[]"); }catch(e){ return []; } }
+
+// รับรายชื่อล็อกที่ส่งมากับลิงก์
+if(qp.has("lock")){
+  var incoming=(qp.get("lock")||"").split("~").map(function(s){ return s.trim(); }).filter(Boolean);
+  EXCLUDED={}; incoming.forEach(function(n){ EXCLUDED[n]=1; }); save();
+}
+
+function visible(){
+  var q=$("q").value.trim().toLowerCase(), a=$("selAmphoe").value;
+  return PEOPLE.filter(function(p){
+    if(a && p.amphoe!==a) return false;
+    if(q && (p.name+" "+p.pos+" "+p.tambon+" "+p.amphoe).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+}
+function stats(){
+  var off=PEOPLE.filter(function(p){ return EXCLUDED[p.name]; }).length;
+  $("sTotal").textContent=PEOPLE.length;
+  $("sOn").textContent=(PEOPLE.length-off)+" คน";
+  $("sOff").textContent=off+" คน";
+}
+function render(){
+  var list=visible(), groups={};
+  list.forEach(function(p){ (groups[p.amphoe]=groups[p.amphoe]||[]).push(p); });
+  var keys=Object.keys(groups).sort(function(a,b){ return a.localeCompare(b,"th"); });
+  $("groups").innerHTML = keys.length ? keys.map(function(k){
+    var g=groups[k], off=g.filter(function(p){ return EXCLUDED[p.name]; }).length;
+    return '<section class="group"><div class="ghead"><h2>'+esc(k)+'</h2>'+
+      '<div class="tools" style="margin:0"><span class="n">เข้าร่วม '+(g.length-off)+' / '+g.length+' คน</span>'+
+      '<button data-g="'+esc(k)+'" data-v="1">ติ๊กทั้งกลุ่ม</button><button data-g="'+esc(k)+'" data-v="0">ล็อกทั้งกลุ่ม</button></div></div>'+
+      '<div class="list">'+g.map(function(p){
+        var lock=!!EXCLUDED[p.name];
+        return '<label class="item'+(lock?" locked":"")+'"><input type="checkbox" data-n="'+esc(p.name)+'"'+(lock?"":" checked")+'>'+
+          '<span class="tx"><b>'+esc(p.name)+'</b>'+(lock?'<span class="pin">ล็อกไว้</span>':'')+
+          '<small>'+esc([p.pos,p.tambon].filter(Boolean).join(" • ")||"—")+'</small></span></label>';
+      }).join("")+'</div></section>';
+  }).join("") : '<div class="skel">ไม่พบรายชื่อที่ค้นหา</div>';
+
+  $("groups").querySelectorAll("input[type=checkbox]").forEach(function(el){
+    el.onchange=function(){
+      var n=el.getAttribute("data-n");
+      if(el.checked) delete EXCLUDED[n]; else EXCLUDED[n]=1;
+      save(); render(); toast(el.checked?("ปลดล็อก "+n+" แล้ว"):("ล็อก "+n+" ไม่ให้ถูกสุ่มแล้ว"));
+    };
+  });
+  $("groups").querySelectorAll("button[data-g]").forEach(function(b){
+    b.onclick=function(){
+      var g=b.getAttribute("data-g"), on=b.getAttribute("data-v")==="1";
+      PEOPLE.filter(function(p){ return p.amphoe===g; }).forEach(function(p){
+        if(on) delete EXCLUDED[p.name]; else EXCLUDED[p.name]=1;
+      });
+      save(); render(); toast(on?("ติ๊กทั้งกลุ่ม "+g):("ล็อกทั้งกลุ่ม "+g));
+    };
+  });
+  stats();
+}
+function load(){
+  fetchSheet(function(err,res){
+    if(err){ $("err").style.display="block"; $("err").textContent="⚠️ "+err.message; return; }
+    try{
+      $("err").style.display="none";
+      PEOPLE=buildPeople(res);
+      var set={}; PEOPLE.forEach(function(p){ set[p.amphoe]=(set[p.amphoe]||0)+1; });
+      var cur=$("selAmphoe").value;
+      $("selAmphoe").innerHTML='<option value="">ทุกหน่วยงาน ('+PEOPLE.length+' คน)</option>'+
+        Object.keys(set).sort(function(a,b){ return a.localeCompare(b,"th"); }).map(function(k){
+          return '<option value="'+esc(k)+'">'+esc(k)+' ('+set[k]+')</option>'; }).join("");
+      if(cur) $("selAmphoe").value=cur;
+      render();
+    }catch(e){ $("err").style.display="block"; $("err").textContent="⚠️ ประมวลผลรายชื่อไม่สำเร็จ: "+e.message; }
+  });
+}
+function lockLink(){
+  var locked=PEOPLE.filter(function(p){ return EXCLUDED[p.name]; }).map(function(p){ return p.name; });
+  var base=location.href.replace(/[^\/]*$/,"")+"random.html";
+  return locked.length ? base+"?lock="+encodeURIComponent(locked.join("~")) : base;
+}
+$("q").oninput=render;
+$("selAmphoe").onchange=render;
+$("allOn").onclick=function(){ EXCLUDED={}; save(); render(); toast("ให้ทุกคนเข้าร่วมการสุ่มแล้ว"); };
+$("allOff").onclick=function(){ visible().forEach(function(p){ EXCLUDED[p.name]=1; }); save(); render(); toast("ล็อกรายชื่อที่แสดงอยู่ทั้งหมดแล้ว"); };
+$("onlyUnpicked").onclick=function(){
+  var ps=picked(); if(!ps.length){ toast("ยังไม่มีใครถูกสุ่มในเครื่องนี้"); return; }
+  ps.forEach(function(p){ EXCLUDED[p.name]=1; }); save(); render(); toast("ล็อกผู้ที่ถูกสุ่มไปแล้ว "+ps.length+" คน");
+};
+$("reload").onclick=function(){ toast("กำลังโหลดรายชื่อใหม่…"); load(); };
+$("goPick").onclick=function(){ location.href=lockLink(); };
+$("copyLink").onclick=function(){
+  var url=lockLink();
+  var ok=function(){ toast("คัดลอกลิงก์แล้ว — เปิดลิงก์นี้บนเครื่องที่จะใช้สุ่ม"); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok,function(){ prompt("คัดลอกลิงก์นี้",url); });
+  else prompt("คัดลอกลิงก์นี้",url);
+};
+load();
+})();
+</script>
+</body>
+</html>

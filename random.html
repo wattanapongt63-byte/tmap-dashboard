@@ -105,6 +105,7 @@ body.fs .stage{min-height:74vh}
       </select>
       <button id="btnFs" title="เต็มจอสำหรับฉายขึ้นโปรเจกเตอร์">⛶ เต็มจอ</button>
       <button id="btnReload" title="ดึงรายชื่อล่าสุดจากชีต">↻ โหลดรายชื่อใหม่</button>
+      <a href="./manage.html" style="text-decoration:none"><button type="button">⚙️ จัดการ/ล็อกรายชื่อ</button></a>
       <a class="link" href="./">← กลับหน้า Dashboard</a>
     </div>
   </header>
@@ -126,6 +127,7 @@ body.fs .stage{min-height:74vh}
     <label class="switch chip"><input type="checkbox" id="optSound" checked><span>เสียงประกอบ</span></label>
     <label class="switch chip"><input type="checkbox" id="optShowUnit" checked><span>แสดงหน่วยงาน</span></label>
     <span class="chip">เหลือยังไม่ถูกสุ่ม <b id="leftN">-</b></span>
+    <span class="chip">🔒 ล็อกไว้ไม่ให้สุ่ม <b id="lockN">-</b></span>
   </div>
 
   <div class="cols">
@@ -209,6 +211,13 @@ function savePicked(){ try{ localStorage.setItem(STORE, JSON.stringify(PICKED));
 PICKED = loadPicked();
 var EXCLUDED = (function(){ try{ return JSON.parse(localStorage.getItem(EXSTORE)||"{}"); }catch(e){ return {}; } })();
 function saveExcluded(){ try{ localStorage.setItem(EXSTORE, JSON.stringify(EXCLUDED)); }catch(e){} }
+var FROM_LINK = false;
+if(qp.has("lock")){                                   // รับรายชื่อล็อกที่ส่งมากับลิงก์จากหน้าจัดการรายชื่อ
+  EXCLUDED = {};
+  (qp.get("lock")||"").split("~").map(function(x){ return x.trim(); }).filter(Boolean)
+    .forEach(function(n){ EXCLUDED[n]=1; });
+  saveExcluded(); FROM_LINK = true;
+}
 
 function filtered(){
   var a=$("selAmphoe").value;
@@ -334,8 +343,9 @@ function render(){
   var list=filtered(), left=pool().length;
   $("poolChip").innerHTML='รายชื่อในกลุ่ม <b>'+list.length+'</b> คน';
   $("leftN").textContent=left+" คน";
+  $("lockN").textContent=filtered().filter(function(p){ return EXCLUDED[p.name]; }).length+" คน";
   var offN=list.filter(function(p){ return EXCLUDED[p.name]; }).length;
-  $("poolHint").innerHTML="ขีดฆ่า = ถูกสุ่มไปแล้ว • <span style=\"color:#fca5a5\">เส้นประแดง = พักไว้ไม่เข้าร่วมสุ่ม ("+offN+" คน)</span> — <b>คลิกที่ชื่อ</b> เพื่อพักหรือนำกลับเข้ากลุ่มสุ่ม";
+  $("poolHint").innerHTML="ขีดฆ่า = ถูกสุ่มไปแล้ว • <span style=\"color:#fca5a5\">เส้นประแดง = พักไว้ไม่เข้าร่วมสุ่ม ("+offN+" คน)</span> — <b>คลิกที่ชื่อ</b> เพื่อล็อก/ปลดล็อก (หรือใช้หน้า <a class=\"link\" href=\"./manage.html\">จัดการรายชื่อ</a> ติ๊กทีละหลายคน)";
   var used={}; PICKED.forEach(function(p){ used[p.name]=1; });
   $("pool").innerHTML=list.map(function(p){
     var cls=(EXCLUDED[p.name]?"off":(used[p.name]?"done":""));
@@ -371,7 +381,8 @@ function load(cb){
       PEOPLE=buildPeople(res);
       fillAmphoe(); render();
       $("bigname").textContent="พร้อมสุ่มแล้ว";
-      $("eyebrow").textContent="มีรายชื่อ "+PEOPLE.length+" คน กดปุ่มเพื่อเริ่มสุ่ม";
+      var lockN=PEOPLE.filter(function(p){ return EXCLUDED[p.name]; }).length;
+      $("eyebrow").textContent="มีรายชื่อ "+PEOPLE.length+" คน"+(lockN?(" (ล็อกไว้ "+lockN+" คน"+(FROM_LINK?" ตามลิงก์ที่ตั้งไว้":"")+")"):"")+" กดปุ่มเพื่อเริ่มสุ่ม";
       if(cb) cb();
     }catch(e){ $("err").style.display="block"; $("err").textContent="⚠️ ประมวลผลรายชื่อไม่สำเร็จ: "+e.message; }
   });
