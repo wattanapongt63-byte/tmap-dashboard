@@ -82,7 +82,7 @@ a.link:hover{text-decoration:underline}
 canvas#cf{position:fixed;inset:0;pointer-events:none;z-index:60}
 .err{background:rgba(248,113,113,.14);border:1px solid rgba(248,113,113,.4);color:#fecaca;border-radius:14px;padding:11px 14px;font-size:14px;margin-bottom:12px;display:none}
 .foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:24px}
-body.fs .cols,body.fs .head p,body.fs .foot{display:none}
+body.fs .cols,body.fs .head p,body.fs .foot,body.fs .btns,body.fs .opts{display:none}
 body.fs .stage{min-height:74vh}
 </style>
 </head>
@@ -105,7 +105,7 @@ body.fs .stage{min-height:74vh}
       </select>
       <button id="btnFs" title="เต็มจอสำหรับฉายขึ้นโปรเจกเตอร์">⛶ เต็มจอ</button>
       <button id="btnReload" title="ดึงรายชื่อล่าสุดจากชีต">↻ โหลดรายชื่อใหม่</button>
-      <a href="./manage.html" style="text-decoration:none"><button type="button">⚙️ จัดการ/ล็อกรายชื่อ</button></a>
+      <a href="./manage.html" style="text-decoration:none"><button type="button">⚙️ จัดการรายชื่อ</button></a>
       <a class="link" href="./">← กลับหน้า Dashboard</a>
     </div>
   </header>
@@ -118,7 +118,10 @@ body.fs .stage{min-height:74vh}
       <div class="sub" id="sub"></div>
       <div class="multi" id="multi"></div>
     </div>
-    <button class="spin" id="btnSpin">🎯 สุ่มเลย!</button>
+    <div class="tools" style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap">
+      <button class="spin" id="btnSpin">🎯 สุ่มเลย!</button>
+      <button id="btnSkip" hidden title="เช่น ไม่ได้มาร่วมงาน — จะไม่ถูกสุ่มอีกในรอบนี้">🔁 ข้ามคนนี้ สุ่มใหม่</button>
+    </div>
     <div class="kbd">กด <b>Spacebar</b> เพื่อสุ่ม • <b>F</b> เต็มจอ</div>
   </section>
 
@@ -127,14 +130,16 @@ body.fs .stage{min-height:74vh}
     <label class="switch chip"><input type="checkbox" id="optSound" checked><span>เสียงประกอบ</span></label>
     <label class="switch chip"><input type="checkbox" id="optShowUnit" checked><span>แสดงหน่วยงาน</span></label>
     <span class="chip">เหลือยังไม่ถูกสุ่ม <b id="leftN">-</b></span>
-    <span class="chip">🔒 ล็อกไว้ไม่ให้สุ่ม <b id="lockN">-</b></span>
   </div>
 
   <div class="cols">
     <section class="panel">
-      <h2>รายชื่อทั้งหมดในกลุ่มที่สุ่ม</h2>
-      <p class="hint" id="poolHint"></p>
-      <div class="pool" id="pool"></div>
+      <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+        <h2 style="margin:0">รายชื่อในกลุ่มสุ่ม</h2>
+        <button id="btnPool">แสดงรายชื่อ</button>
+      </div>
+      <p class="hint" id="poolHint" style="margin-top:6px">ซ่อนไว้เพื่อความเรียบร้อยตอนฉายขึ้นจอ</p>
+      <div class="pool" id="pool" hidden></div>
     </section>
     <section class="panel">
       <h2>ผู้ที่ถูกสุ่มแล้ว</h2>
@@ -205,7 +210,7 @@ function buildPeople(res){
 }
 
 /* ---------- สถานะ ---------- */
-var PEOPLE=[], PICKED=[], SPINNING=false;
+var PEOPLE=[], PICKED=[], SPINNING=false, LAST_WINNERS=[];
 function loadPicked(){ try{ return JSON.parse(localStorage.getItem(STORE)||"[]"); }catch(e){ return []; } }
 function savePicked(){ try{ localStorage.setItem(STORE, JSON.stringify(PICKED)); }catch(e){} }
 PICKED = loadPicked();
@@ -221,6 +226,7 @@ if(qp.has("lock")){                                   // รับรายช�
   (qp.get("lock")||"").split("~").map(function(x){ return nkey(x); }).filter(Boolean)
     .forEach(function(n){ EXCLUDED[n]=1; });
   saveExcluded(); FROM_LINK = true;
+  try{ history.replaceState(null,"",location.pathname); }catch(e){}   // ซ่อนรายชื่อที่ล็อกออกจากแถบที่อยู่
 }
 
 function filtered(){
@@ -302,6 +308,7 @@ function spin(){
   SPINNING=true;
   $("btnSpin").disabled=true;
   $("multi").innerHTML=""; $("sub").textContent="";
+  $("btnSkip").hidden = true;
   $("eyebrow").textContent="กำลังสุ่ม…";
   $("bigname").classList.add("rolling");
 
@@ -321,6 +328,8 @@ function spin(){
 }
 function reveal(winners){
   $("bigname").classList.remove("rolling");
+  LAST_WINNERS = winners.slice();
+  $("btnSkip").hidden = false;
   winners.forEach(function(w){ PICKED.push({ name:w.name, amphoe:w.amphoe, tambon:w.tambon, pos:w.pos, at:Date.now() }); });
   savePicked();
   if(winners.length===1){
@@ -345,21 +354,20 @@ function reveal(winners){
 /* ---------- แสดงผลรายชื่อ/ประวัติ ---------- */
 function render(){
   var list=filtered(), left=pool().length;
-  $("poolChip").innerHTML='รายชื่อในกลุ่ม <b>'+list.length+'</b> คน';
+  var eligible=list.filter(function(p){ return !EXCLUDED[nkey(p.name)]; }).length;
+  $("poolChip").innerHTML='รายชื่อในกลุ่ม <b>'+eligible+'</b> คน';
   $("leftN").textContent=left+" คน";
-  $("lockN").textContent=filtered().filter(function(p){ return EXCLUDED[nkey(p.name)]; }).length+" คน";
-  var offN=list.filter(function(p){ return EXCLUDED[nkey(p.name)]; }).length;
-  $("poolHint").innerHTML="ขีดฆ่า = ถูกสุ่มไปแล้ว • <span style=\"color:#fca5a5\">เส้นประแดง = พักไว้ไม่เข้าร่วมสุ่ม ("+offN+" คน)</span> — <b>คลิกที่ชื่อ</b> เพื่อล็อก/ปลดล็อก (หรือใช้หน้า <a class=\"link\" href=\"./manage.html\">จัดการรายชื่อ</a> ติ๊กทีละหลายคน)";
+  var inDraw=list.filter(function(p){ return !EXCLUDED[nkey(p.name)]; });   // ไม่แสดงคนที่ล็อกไว้เลย
   var used={}; PICKED.forEach(function(p){ used[nkey(p.name)]=1; });
-  $("pool").innerHTML=list.map(function(p){
-    var k=nkey(p.name), cls=(EXCLUDED[k]?"off":(used[k]?"done":""));
-    return '<span class="'+cls+'" data-n="'+esc(p.name)+'" title="'+esc(unitText(p)||p.name)+(EXCLUDED[k]?" (ล็อกไว้ — คลิกเพื่อปลดล็อก)":" (คลิกเพื่อล็อกไม่ให้ถูกสุ่ม)")+'">'+esc(p.name)+'</span>';
+  if($("pool").hidden){
+    $("poolHint").textContent="ซ่อนไว้เพื่อความเรียบร้อยตอนฉายขึ้นจอ";
+  } else {
+    $("poolHint").textContent="ขีดฆ่า = ถูกสุ่มไปแล้ว ("+(inDraw.length-left)+" จาก "+inDraw.length+" คน)";
+  }
+  $("pool").innerHTML=inDraw.map(function(p){
+    var k=nkey(p.name);
+    return '<span class="'+(used[k]?"done":"")+'" title="'+esc(unitText(p)||p.name)+'">'+esc(p.name)+'</span>';
   }).join("") || '<span>ไม่มีรายชื่อ</span>';
-  $("pool").querySelectorAll("span[data-n]").forEach(function(el){
-    el.onclick=function(){ var n=nkey(el.getAttribute("data-n"));
-      if(EXCLUDED[n]) delete EXCLUDED[n]; else EXCLUDED[n]=1;
-      saveExcluded(); render(); };
-  });
   $("hist").innerHTML=PICKED.map(function(p,i){
     return '<li><span class="i">'+(i+1)+'</span><span class="t">'+esc(p.name)+
       '<small>'+esc([p.pos,p.amphoe,p.tambon].filter(function(x){return x&&x!=="-";}).join(" • "))+'</small></span>'+
@@ -385,8 +393,7 @@ function load(cb){
       PEOPLE=buildPeople(res);
       fillAmphoe(); render();
       $("bigname").textContent="พร้อมสุ่มแล้ว";
-      var lockN=PEOPLE.filter(function(p){ return EXCLUDED[nkey(p.name)]; }).length;
-      $("eyebrow").textContent="มีรายชื่อ "+PEOPLE.length+" คน"+(lockN?(" (ล็อกไว้ "+lockN+" คน"+(FROM_LINK?" ตามลิงก์ที่ตั้งไว้":"")+")"):"")+" กดปุ่มเพื่อเริ่มสุ่ม";
+      $("eyebrow").textContent="มีรายชื่อ "+pool().length+" คน กดปุ่มเพื่อเริ่มสุ่ม";
       if(cb) cb();
     }catch(e){ $("err").style.display="block"; $("err").textContent="⚠️ ประมวลผลรายชื่อไม่สำเร็จ: "+e.message; }
   });
@@ -394,6 +401,17 @@ function load(cb){
 
 /* ---------- ปุ่มและคีย์ลัด ---------- */
 $("btnSpin").onclick=spin;
+$("btnSkip").onclick=function(){
+  if(SPINNING || !LAST_WINNERS.length) return;
+  var keys={}; LAST_WINNERS.forEach(function(w){ keys[nkey(w.name)]=1; EXCLUDED[nkey(w.name)]=1; });
+  PICKED = PICKED.filter(function(p){ return !keys[nkey(p.name)]; });   // ถอนออกจากประวัติ แล้วกันไม่ให้ถูกสุ่มซ้ำ
+  savePicked(); saveExcluded(); LAST_WINNERS=[]; render(); spin();
+};
+$("btnPool").onclick=function(){
+  var el=$("pool"); el.hidden=!el.hidden;
+  $("btnPool").textContent=el.hidden?"แสดงรายชื่อ":"ซ่อนรายชื่อ";
+  render();
+};
 $("btnReload").onclick=function(){ $("eyebrow").textContent="กำลังโหลดรายชื่อใหม่…"; load(); };
 $("selAmphoe").onchange=render;
 $("optNoRepeat").onchange=render;
