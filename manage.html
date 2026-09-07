@@ -63,9 +63,37 @@ label.item.locked .tx b{font-weight:600}
   border:1px solid var(--line);border-radius:999px;padding:9px 20px;font-size:13.5px;opacity:0;transition:.25s;z-index:40;pointer-events:none}
 .toast.on{opacity:1;transform:translateX(-50%)}
 .skel{color:var(--muted);padding:26px 0;text-align:center}
+body.locked .wrap,body.locked .barfix{display:none}
+#gate{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:18px;
+  background:radial-gradient(900px 500px at 50% -10%,#1e3a8a 0%,transparent 60%),linear-gradient(160deg,#070d1c,#0b1428)}
+body.locked #gate{display:flex}
+.gbox{width:100%;max-width:400px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:22px;
+  padding:30px 26px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.gbox .ic{font-size:40px;line-height:1}
+.gbox h2{margin:10px 0 4px;font-size:19px;font-weight:700}
+.gbox p{margin:0 0 18px;font-size:13.5px;color:var(--muted);line-height:1.6}
+.gbox input[type=password]{width:100%;font-family:inherit;font-size:17px;text-align:center;letter-spacing:2px;
+  padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);outline:0}
+.gbox input[type=password]:focus{border-color:#38bdf8;box-shadow:0 0 0 3px rgba(56,189,248,.18)}
+.gbox .go{width:100%;margin-top:12px;border-radius:14px;padding:12px;font-size:15px;justify-content:center}
+.gbox .msg{min-height:20px;margin-top:11px;font-size:13.5px;color:var(--bad)}
+.gbox .rem{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:12px;cursor:pointer}
+.gbox .rem input{width:17px;height:17px;accent-color:#34d399;cursor:pointer}
+.shake{animation:shk .4s}
+@keyframes shk{0%,100%{transform:none}25%{transform:translateX(-9px)}75%{transform:translateX(9px)}}
 </style>
 </head>
-<body>
+<body class="locked">
+<div id="gate"><div class="gbox" id="gbox">
+  <div class="ic">🔐</div>
+  <h2>หน้าจัดการรายชื่อ</h2>
+  <p>ส่วนนี้สำหรับผู้ดูแลเท่านั้น<br>กรุณากรอกรหัสผ่านเพื่อเข้าใช้งาน</p>
+  <input type="password" id="pw" placeholder="รหัสผ่าน" autocomplete="current-password" autofocus>
+  <button class="go" id="pwGo">เข้าใช้งาน</button>
+  <div class="msg" id="pwMsg"></div>
+  <label class="rem"><input type="checkbox" id="pwRem" checked>จำไว้ในเครื่องนี้ 12 ชั่วโมง</label>
+  <p style="margin:16px 0 0"><a class="link" href="./">← กลับหน้า Dashboard</a></p>
+</div></div>
 <div class="wrap">
   <div class="head">
     <div>
@@ -106,6 +134,64 @@ label.item.locked .tx b{font-weight:600}
   </div>
 </div></div>
 <div class="toast" id="toast"></div>
+<script>
+/* ===== ประตูรหัสผ่านของหน้าจัดการรายชื่อ =====
+   เก็บเฉพาะค่าแฮชของรหัสผ่านไว้ในหน้าเว็บ ไม่ได้เก็บตัวรหัสจริง
+   หมายเหตุ: หน้าเว็บนี้เป็นไฟล์นิ่งบน GitHub Pages ไม่มีเซิร์ฟเวอร์ตรวจสอบ
+   จึงกันคนทั่วไปที่เปิดลิงก์เจอได้ แต่กันคนที่เปิดดูซอร์สโค้ดเป็นไม่ได้ */
+(function(){
+"use strict";
+var HASH_SHA="99b30aae10a12f93a42031d0b283c38e1b4f3012c346ce95eb562f4af765c70a";
+var HASH_DJB=993555911;              // สำรองเมื่อเบราว์เซอร์ไม่รองรับ crypto.subtle
+var KEY="tmap_mng_pass_v1", TTL=12*3600*1000;
+var $=function(id){ return document.getElementById(id); };
+var tries=0, blockUntil=0;
+
+function djb2(str){ var h=5381; for(var i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0; return h; }
+function verify(pw){
+  if(window.crypto && window.crypto.subtle && window.TextEncoder){
+    return window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(pw)).then(function(buf){
+      var hex=Array.prototype.map.call(new Uint8Array(buf),function(b){ return ("0"+b.toString(16)).slice(-2); }).join("");
+      return hex===HASH_SHA;
+    }).catch(function(){ return djb2(pw)===HASH_DJB; });
+  }
+  return Promise.resolve(djb2(pw)===HASH_DJB);
+}
+function remembered(){
+  try{
+    var v=JSON.parse(sessionStorage.getItem(KEY)||localStorage.getItem(KEY)||"null");
+    return !!(v && v.ok && (!v.exp || Date.now()<v.exp));
+  }catch(e){ return false; }
+}
+function remember(persist){
+  var v={ok:1, exp: persist? Date.now()+TTL : 0};
+  try{ sessionStorage.setItem(KEY, JSON.stringify(v)); if(persist) localStorage.setItem(KEY, JSON.stringify(v)); }catch(e){}
+}
+function open(){
+  document.body.classList.remove("locked");
+  window.__gateOpen=true;
+  if(typeof window.__unlockedManage==="function") window.__unlockedManage();
+}
+function submit(){
+  if(Date.now()<blockUntil){ $("pwMsg").textContent="กรอกผิดหลายครั้ง กรุณารอสักครู่"; return; }
+  var pw=$("pw").value;
+  if(!pw){ $("pwMsg").textContent="กรุณากรอกรหัสผ่าน"; return; }
+  $("pwGo").disabled=true; $("pwMsg").textContent="กำลังตรวจสอบ…";
+  verify(pw).then(function(ok){
+    $("pwGo").disabled=false;
+    if(ok){ remember($("pwRem").checked); $("pwMsg").textContent=""; open(); return; }
+    tries++;
+    $("pw").value=""; $("gbox").classList.remove("shake"); void $("gbox").offsetWidth; $("gbox").classList.add("shake");
+    if(tries>=5){ blockUntil=Date.now()+30000; tries=0; $("pwMsg").textContent="กรอกผิดหลายครั้ง กรุณารอ 30 วินาที"; }
+    else $("pwMsg").textContent="รหัสผ่านไม่ถูกต้อง (ครั้งที่ "+tries+")";
+  });
+}
+document.body.classList.add("locked");
+$("pwGo").onclick=submit;
+$("pw").addEventListener("keydown",function(e){ if(e.key==="Enter") submit(); });
+if(remembered()) open(); else setTimeout(function(){ try{ $("pw").focus(); }catch(e){} },60);
+})();
+</script>
 <script>
 (function(){
 "use strict";
@@ -256,7 +342,8 @@ $("copyLink").onclick=function(){
   if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok,function(){ prompt("คัดลอกลิงก์นี้",url); });
   else prompt("คัดลอกลิงก์นี้",url);
 };
-load();
+window.__unlockedManage=function(){ load(); };      // เริ่มดึงข้อมูลหลังปลดล็อกเท่านั้น
+if(window.__gateOpen) window.__unlockedManage();
 })();
 </script>
 </body>
