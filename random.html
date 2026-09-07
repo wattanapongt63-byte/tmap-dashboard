@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>สุ่มรายชื่อนำเสนองาน | Learning T-Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{ --ink:#eaf1ff; --muted:#9db0d0; --line:rgba(255,255,255,.14); --gold:#fbbf24; --ok:#34d399; }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;color:var(--ink);font-family:'Sarabun',system-ui,sans-serif;
+  background:radial-gradient(1200px 700px at 15% -10%,#1e3a8a 0%,transparent 55%),
+             radial-gradient(1000px 600px at 90% 110%,#0e7490 0%,transparent 55%),
+             linear-gradient(160deg,#070d1c,#0b1428 55%,#081020);
+  background-attachment:fixed;min-height:100vh}
+.wrap{max-width:1180px;margin:0 auto;padding:16px 16px 50px}
+.head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.head h1{font-size:21px;margin:0;font-weight:700;letter-spacing:-.2px}
+.head p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font-family:inherit;font-size:13.5px;color:var(--ink);background:rgba(255,255,255,.09);
+  border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer;transition:.15s}
+button:hover,select:hover{background:rgba(255,255,255,.18)}
+select option{background:#0f1a30;color:#eaf1ff}
+a.link{color:#7dd3fc;text-decoration:none;font-size:13.5px}
+a.link:hover{text-decoration:underline}
+.stage{position:relative;background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:26px;
+  padding:34px 26px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.45);overflow:hidden;min-height:330px;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px}
+.stage:before{content:"";position:absolute;inset:0;background:
+  radial-gradient(600px 200px at 50% 0%,rgba(56,189,248,.16),transparent 70%);pointer-events:none}
+.eyebrow{font-size:14px;color:var(--muted);letter-spacing:.5px}
+.namebox{min-height:96px;display:flex;flex-direction:column;justify-content:center;gap:8px;width:100%}
+.bigname{font-size:clamp(30px,6.4vw,68px);font-weight:800;line-height:1.15;letter-spacing:-1px;
+  background:linear-gradient(92deg,#ffffff,#bae6fd 40%,#fde68a);-webkit-background-clip:text;background-clip:text;color:transparent;
+  word-break:break-word;transition:filter .1s}
+.bigname.rolling{filter:blur(.6px);opacity:.92}
+.sub{font-size:clamp(14px,2vw,19px);color:#cbd9f0;font-weight:500;min-height:26px}
+.sub b{color:var(--gold);font-weight:600}
+.multi{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;width:100%}
+.wcard{background:rgba(255,255,255,.08);border:1px solid rgba(251,191,36,.4);border-radius:18px;padding:14px 20px;min-width:230px;
+  animation:pop .45s cubic-bezier(.2,1.4,.4,1) both}
+.wcard .n{font-size:clamp(19px,2.6vw,27px);font-weight:700;color:#fff}
+.wcard .m{font-size:13.5px;color:var(--muted);margin-top:3px}
+@keyframes pop{from{transform:scale(.7) translateY(14px);opacity:0}to{transform:none;opacity:1}}
+.spin{font-size:19px;font-weight:700;padding:15px 46px;border-radius:999px;border:0;color:#0b1020;
+  background:linear-gradient(96deg,#fcd34d,#fbbf24 40%,#f59e0b);box-shadow:0 12px 34px rgba(251,191,36,.35);letter-spacing:.3px}
+.spin:hover{background:linear-gradient(96deg,#fde68a,#fbbf24)}
+.spin:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
+.kbd{font-size:12.5px;color:var(--muted)}
+.kbd b{background:rgba(255,255,255,.12);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-weight:500}
+.opts{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;margin:16px 0 6px}
+.chip{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.07);border:1px solid var(--line);
+  border-radius:999px;padding:6px 13px;font-size:13.5px;color:var(--muted)}
+.chip b{color:var(--ink);font-weight:600}
+.switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.switch input{appearance:none;width:38px;height:21px;border-radius:999px;background:rgba(255,255,255,.16);position:relative;outline:0;cursor:pointer;transition:.2s}
+.switch input:checked{background:#34d399}
+.switch input:after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked:after{left:19px}
+.cols{display:grid;grid-template-columns:1fr 340px;gap:14px;margin-top:16px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.panel{background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:20px;padding:16px 18px}
+.panel h2{margin:0 0 3px;font-size:16px;font-weight:600}
+.panel .hint{margin:0 0 12px;font-size:12.5px;color:var(--muted)}
+.hist{list-style:none;margin:0;padding:0;max-height:330px;overflow:auto}
+.hist li{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.07);font-size:14px}
+.hist li .i{width:24px;height:24px;flex:none;border-radius:8px;background:rgba(251,191,36,.16);color:var(--gold);
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.hist li .t{flex:1;min-width:0}
+.hist li .t small{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist li button{padding:3px 9px;font-size:12px;border-radius:8px}
+.pool{display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow:auto}
+.pool span{font-size:12.5px;background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.pool span{cursor:pointer;transition:.15s}
+.pool span:hover{background:rgba(255,255,255,.16);color:var(--ink)}
+.pool span.done{opacity:.4;text-decoration:line-through}
+.pool span.off{opacity:.4;border-style:dashed;border-color:rgba(248,113,113,.6);color:#fca5a5;text-decoration:none}
+canvas#cf{position:fixed;inset:0;pointer-events:none;z-index:60}
+.err{background:rgba(248,113,113,.14);border:1px solid rgba(248,113,113,.4);color:#fecaca;border-radius:14px;padding:11px 14px;font-size:14px;margin-bottom:12px;display:none}
+.foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:24px}
+body.fs .cols,body.fs .head p,body.fs .foot{display:none}
+body.fs .stage{min-height:74vh}
+</style>
+</head>
+<body>
+<canvas id="cf"></canvas>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1>🎲 สุ่มรายชื่อผู้นำเสนองาน</h1>
+      <p>โครงการพัฒนาบุคลากรด้านการสร้าง Learning T-Map ปักหมุดแหล่งเรียนรู้คู่ชุมชน</p>
+    </div>
+    <div class="btns">
+      <span class="chip" id="poolChip">กำลังโหลดรายชื่อ…</span>
+      <select id="selAmphoe" title="สุ่มเฉพาะหน่วยงาน"></select>
+      <select id="selCount" title="จำนวนที่สุ่มต่อครั้ง">
+        <option value="1" selected>สุ่มครั้งละ 1 คน</option>
+        <option value="2">สุ่มครั้งละ 2 คน</option>
+        <option value="3">สุ่มครั้งละ 3 คน</option>
+        <option value="5">สุ่มครั้งละ 5 คน</option>
+      </select>
+      <button id="btnFs" title="เต็มจอสำหรับฉายขึ้นโปรเจกเตอร์">⛶ เต็มจอ</button>
+      <button id="btnReload" title="ดึงรายชื่อล่าสุดจากชีต">↻ โหลดรายชื่อใหม่</button>
+      <a class="link" href="./">← กลับหน้า Dashboard</a>
+    </div>
+  </header>
+  <div class="err" id="err"></div>
+
+  <section class="stage">
+    <div class="eyebrow" id="eyebrow">กดปุ่มเพื่อเริ่มสุ่ม</div>
+    <div class="namebox">
+      <div class="bigname" id="bigname">พร้อมสุ่มแล้ว</div>
+      <div class="sub" id="sub"></div>
+      <div class="multi" id="multi"></div>
+    </div>
+    <button class="spin" id="btnSpin">🎯 สุ่มเลย!</button>
+    <div class="kbd">กด <b>Spacebar</b> เพื่อสุ่ม • <b>F</b> เต็มจอ</div>
+  </section>
+
+  <div class="opts">
+    <label class="switch chip"><input type="checkbox" id="optNoRepeat" checked><span>ไม่สุ่มซ้ำคนเดิม</span></label>
+    <label class="switch chip"><input type="checkbox" id="optSound" checked><span>เสียงประกอบ</span></label>
+    <label class="switch chip"><input type="checkbox" id="optShowUnit" checked><span>แสดงหน่วยงาน</span></label>
+    <span class="chip">เหลือยังไม่ถูกสุ่ม <b id="leftN">-</b></span>
+  </div>
+
+  <div class="cols">
+    <section class="panel">
+      <h2>รายชื่อทั้งหมดในกลุ่มที่สุ่ม</h2>
+      <p class="hint" id="poolHint"></p>
+      <div class="pool" id="pool"></div>
+    </section>
+    <section class="panel">
+      <h2>ผู้ที่ถูกสุ่มแล้ว</h2>
+      <p class="hint">เรียงตามลำดับที่สุ่มได้ • กด “เอาออก” เพื่อนำกลับเข้ากลุ่มสุ่ม</p>
+      <ul class="hist" id="hist"></ul>
+      <div class="btns" style="margin-top:12px">
+        <button id="btnClear">ล้างประวัติทั้งหมด</button>
+        <button id="btnCopy">คัดลอกรายชื่อ</button>
+      </div>
+    </section>
+  </div>
+  <p class="foot">รายชื่อดึงสดจาก Google Sheets ของแบบทดสอบก่อนอบรม • ประวัติการสุ่มถูกจำไว้ในเครื่องนี้</p>
+</div>
+<script>
+(function(){
+"use strict";
+var SHEET_ID = "1fsl-HHFCxH7LKgL9-V-Ow9EB_jtD7_pRZwybhI0hvm8";
+var GID = null, STORE = "tmap_picked_v1";
+var qp = new URLSearchParams(location.search);
+if(qp.get("sheet")) SHEET_ID = qp.get("sheet");
+if(qp.get("gid")) GID = qp.get("gid");
+
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+
+/* ---------- ดึงรายชื่อจากชีต (JSONP ใช้ได้ทั้ง file:// และเว็บ) ---------- */
+var cbSeq=0;
+function fetchSheet(cb){
+  var name="__pick_cb_"+(++cbSeq);
+  var url="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:json;responseHandler:"+name
+        +(GID?"&gid="+encodeURIComponent(GID):"")+"&headers=1&_="+Date.now();
+  var s=document.createElement("script"), done=false;
+  var t=setTimeout(function(){ if(done)return; done=true; clean(); cb(new Error("หมดเวลาเชื่อมต่อ Google Sheets")); },20000);
+  function clean(){ clearTimeout(t); try{delete window[name];}catch(e){window[name]=undefined;} if(s.parentNode)s.parentNode.removeChild(s); }
+  window[name]=function(res){ if(done)return; done=true; clean(); cb(null,res); };
+  s.onerror=function(){ if(done)return; done=true; clean(); cb(new Error("โหลดรายชื่อไม่สำเร็จ — ตรวจสอบการแชร์ชีต")); };
+  s.src=url; document.head.appendChild(s);
+}
+var OPT_RE=/^\s*[กขคงจฉ]\s*[.)]/;
+function buildPeople(res){
+  var cols=res.table.cols, rows=res.table.rows||[];
+  var cells=rows.map(function(r){ return (r.c||[]).map(function(c){ return c?c.v:null; }); });
+  var nameIdx=-1, amphoeIdx=-1, tambonIdx=-1, posIdx=-1;
+  cols.forEach(function(c,i){
+    var lab=c.label||"";
+    if(c.type!=="string") return;
+    var vals=cells.map(function(r){return r[i];}).filter(function(v){ return v!=null&&String(v).trim()!==""; });
+    var hit=vals.filter(function(v){ return OPT_RE.test(String(v)); }).length;
+    if(vals.length && hit/vals.length>=0.5) return;              // คอลัมน์คำตอบข้อสอบ ข้าม
+    if(nameIdx<0 && /ชื่อ|นาม/.test(lab)) nameIdx=i;
+    else if(amphoeIdx<0 && /อำเภอ/.test(lab)) amphoeIdx=i;
+    else if(tambonIdx<0 && /ตำบล/.test(lab)) tambonIdx=i;
+    else if(posIdx<0 && /ตำแหน่ง/.test(lab)) posIdx=i;
+  });
+  var seen={}, out=[];
+  cells.forEach(function(r){
+    var nm=String(nameIdx>=0?(r[nameIdx]||""):"").trim();
+    if(!nm) return;
+    var key=nm.replace(/\s+/g,"");
+    if(seen[key]) return;                                        // ตอบซ้ำ นับคนเดียว
+    seen[key]=1;
+    out.push({ name:nm,
+      amphoe:String(amphoeIdx>=0?(r[amphoeIdx]||""):"").trim(),
+      tambon:String(tambonIdx>=0?(r[tambonIdx]||""):"").trim(),
+      pos:String(posIdx>=0?(r[posIdx]||""):"").trim() });
+  });
+  return out;
+}
+
+/* ---------- สถานะ ---------- */
+var PEOPLE=[], PICKED=[], SPINNING=false;
+function loadPicked(){ try{ return JSON.parse(localStorage.getItem(STORE)||"[]"); }catch(e){ return []; } }
+function savePicked(){ try{ localStorage.setItem(STORE, JSON.stringify(PICKED)); }catch(e){} }
+PICKED = loadPicked();
+var EXCLUDED = (function(){ try{ return JSON.parse(localStorage.getItem(EXSTORE)||"{}"); }catch(e){ return {}; } })();
+function saveExcluded(){ try{ localStorage.setItem(EXSTORE, JSON.stringify(EXCLUDED)); }catch(e){} }
+
+function filtered(){
+  var a=$("selAmphoe").value;
+  return PEOPLE.filter(function(p){ return !a || p.amphoe===a; });
+}
+function pool(){
+  var list=filtered().filter(function(p){ return !EXCLUDED[p.name]; });
+  if(!$("optNoRepeat").checked) return list;
+  var used={}; PICKED.forEach(function(p){ used[p.name]=1; });
+  return list.filter(function(p){ return !used[p.name]; });
+}
+function unitText(p){
+  if(!$("optShowUnit").checked) return "";
+  var bits=[p.pos,p.amphoe,p.tambon].filter(function(x){ return x && x!=="-"; });
+  return bits.join(" • ");
+}
+
+/* ---------- เสียง ---------- */
+var AC=null;
+function ac(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return AC; }
+function beep(freq,dur,vol,type){
+  if(!$("optSound").checked) return; var c=ac(); if(!c) return;
+  try{
+    var o=c.createOscillator(), g=c.createGain();
+    o.type=type||"triangle"; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.05,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+(dur||0.06));
+    o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+(dur||0.06));
+  }catch(e){}
+}
+function fanfare(){
+  if(!$("optSound").checked) return;
+  [[523,0],[659,110],[784,220],[1047,330]].forEach(function(n){
+    setTimeout(function(){ beep(n[0],0.32,0.08,"sine"); },n[1]);
+  });
+}
+
+/* ---------- พลุกระดาษ ---------- */
+var cv=$("cf"), ctx=cv.getContext("2d"), parts=[], raf=null;
+function sizeCv(){ cv.width=innerWidth*devicePixelRatio; cv.height=innerHeight*devicePixelRatio;
+  cv.style.width=innerWidth+"px"; cv.style.height=innerHeight+"px"; ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); }
+addEventListener("resize",sizeCv); sizeCv();
+function confetti(n){
+  var colors=["#fbbf24","#34d399","#60a5fa","#f472b6","#fde68a","#22d3ee"];
+  for(var i=0;i<(n||150);i++){
+    parts.push({ x:innerWidth/2+(Math.random()-.5)*260, y:innerHeight*0.34,
+      vx:(Math.random()-.5)*11, vy:-(6+Math.random()*11), g:0.28+Math.random()*0.12,
+      s:5+Math.random()*7, r:Math.random()*Math.PI, vr:(Math.random()-.5)*0.35,
+      c:colors[i%colors.length], life:110+Math.random()*60 });
+  }
+  if(!raf) raf=requestAnimationFrame(step);
+}
+function step(){
+  ctx.clearRect(0,0,innerWidth,innerHeight);
+  parts=parts.filter(function(p){ return p.life>0 && p.y<innerHeight+40; });
+  parts.forEach(function(p){
+    p.life--; p.x+=p.vx; p.y+=p.vy; p.vy+=p.g; p.vx*=0.99; p.r+=p.vr;
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r); ctx.fillStyle=p.c;
+    ctx.globalAlpha=Math.max(0,Math.min(1,p.life/60));
+    ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.6); ctx.restore();
+  });
+  if(parts.length) raf=requestAnimationFrame(step); else { raf=null; ctx.clearRect(0,0,innerWidth,innerHeight); }
+}
+
+/* ---------- การสุ่ม ---------- */
+function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
+function spin(){
+  if(SPINNING) return;
+  var list=pool(), want=+$("selCount").value||1;
+  if(!list.length){
+    $("eyebrow").textContent="สุ่มครบทุกคนแล้ว";
+    $("bigname").textContent="ไม่เหลือรายชื่อให้สุ่ม";
+    $("sub").innerHTML='กด “ล้างประวัติทั้งหมด” เพื่อเริ่มรอบใหม่ หรือปิดตัวเลือก “ไม่สุ่มซ้ำคนเดิม”';
+    $("multi").innerHTML=""; return;
+  }
+  var n=Math.min(want,list.length);
+  var winners=shuffle(list.slice()).slice(0,n);
+  SPINNING=true;
+  $("btnSpin").disabled=true;
+  $("multi").innerHTML=""; $("sub").textContent="";
+  $("eyebrow").textContent="กำลังสุ่ม…";
+  $("bigname").classList.add("rolling");
+
+  // ใช้ setTimeout (ไม่ใช่ requestAnimationFrame) เพื่อให้การสุ่มจบแน่นอนแม้สลับแท็บหรือหน้าจอถูกซ่อน
+  var t0=Date.now(), DUR=3000, finished=false;
+  function finish(){ if(finished) return; finished=true; reveal(winners); }
+  (function roll(){
+    if(finished) return;
+    var t=Math.min(1,(Date.now()-t0)/DUR);
+    var p=list[Math.floor(Math.random()*list.length)];
+    $("bigname").textContent=p.name;
+    beep(320+Math.random()*420,0.035,0.028,"square");
+    if(t<1) setTimeout(roll, 42 + 430*Math.pow(t,3.1));   // ยิ่งใกล้จบยิ่งช้าลง
+    else finish();
+  })();
+  setTimeout(finish, DUR+400);
+}
+function reveal(winners){
+  $("bigname").classList.remove("rolling");
+  winners.forEach(function(w){ PICKED.push({ name:w.name, amphoe:w.amphoe, tambon:w.tambon, pos:w.pos, at:Date.now() }); });
+  savePicked();
+  if(winners.length===1){
+    $("eyebrow").textContent="🎉 ผู้นำเสนอคนต่อไปคือ";
+    $("bigname").textContent=winners[0].name;
+    $("sub").innerHTML=esc(unitText(winners[0]));
+    $("multi").innerHTML="";
+  } else {
+    $("eyebrow").textContent="🎉 ผู้นำเสนอ "+winners.length+" คนคือ";
+    $("bigname").textContent="";
+    $("sub").textContent="";
+    $("multi").innerHTML=winners.map(function(w,i){
+      return '<div class="wcard" style="animation-delay:'+(i*0.13)+'s"><div class="n">'+esc(w.name)+'</div><div class="m">'+esc(unitText(w))+'</div></div>';
+    }).join("");
+  }
+  confetti(winners.length>1?200:160);
+  fanfare();
+  SPINNING=false; $("btnSpin").disabled=false;
+  render();
+}
+
+/* ---------- แสดงผลรายชื่อ/ประวัติ ---------- */
+function render(){
+  var list=filtered(), left=pool().length;
+  $("poolChip").innerHTML='รายชื่อในกลุ่ม <b>'+list.length+'</b> คน';
+  $("leftN").textContent=left+" คน";
+  var offN=list.filter(function(p){ return EXCLUDED[p.name]; }).length;
+  $("poolHint").innerHTML="ขีดฆ่า = ถูกสุ่มไปแล้ว • <span style=\"color:#fca5a5\">เส้นประแดง = พักไว้ไม่เข้าร่วมสุ่ม ("+offN+" คน)</span> — <b>คลิกที่ชื่อ</b> เพื่อพักหรือนำกลับเข้ากลุ่มสุ่ม";
+  var used={}; PICKED.forEach(function(p){ used[p.name]=1; });
+  $("pool").innerHTML=list.map(function(p){
+    var cls=(EXCLUDED[p.name]?"off":(used[p.name]?"done":""));
+    return '<span class="'+cls+'" data-n="'+esc(p.name)+'" title="'+esc(unitText(p)||p.name)+(EXCLUDED[p.name]?" (พักไว้ — คลิกเพื่อนำกลับ)":" (คลิกเพื่อพักไม่ให้ถูกสุ่ม)")+'">'+esc(p.name)+'</span>';
+  }).join("") || '<span>ไม่มีรายชื่อ</span>';
+  $("pool").querySelectorAll("span[data-n]").forEach(function(el){
+    el.onclick=function(){ var n=el.getAttribute("data-n");
+      if(EXCLUDED[n]) delete EXCLUDED[n]; else EXCLUDED[n]=1;
+      saveExcluded(); render(); };
+  });
+  $("hist").innerHTML=PICKED.map(function(p,i){
+    return '<li><span class="i">'+(i+1)+'</span><span class="t">'+esc(p.name)+
+      '<small>'+esc([p.pos,p.amphoe,p.tambon].filter(function(x){return x&&x!=="-";}).join(" • "))+'</small></span>'+
+      '<button data-i="'+i+'">เอาออก</button></li>';
+  }).join("") || '<li style="color:var(--muted);border:0">ยังไม่มีใครถูกสุ่ม</li>';
+  $("hist").querySelectorAll("button").forEach(function(b){
+    b.onclick=function(){ PICKED.splice(+b.getAttribute("data-i"),1); savePicked(); render(); };
+  });
+}
+function fillAmphoe(){
+  var set={}; PEOPLE.forEach(function(p){ if(p.amphoe) set[p.amphoe]=(set[p.amphoe]||0)+1; });
+  var keys=Object.keys(set).sort(function(a,b){ return a.localeCompare(b,"th"); });
+  var cur=$("selAmphoe").value;
+  $("selAmphoe").innerHTML='<option value="">ทุกหน่วยงาน ('+PEOPLE.length+' คน)</option>'+
+    keys.map(function(k){ return '<option value="'+esc(k)+'">'+esc(k)+' ('+set[k]+')</option>'; }).join("");
+  if(cur) $("selAmphoe").value=cur;
+}
+function load(cb){
+  fetchSheet(function(err,res){
+    if(err){ $("err").style.display="block"; $("err").textContent="⚠️ "+err.message; return; }
+    try{
+      $("err").style.display="none";
+      PEOPLE=buildPeople(res);
+      fillAmphoe(); render();
+      $("bigname").textContent="พร้อมสุ่มแล้ว";
+      $("eyebrow").textContent="มีรายชื่อ "+PEOPLE.length+" คน กดปุ่มเพื่อเริ่มสุ่ม";
+      if(cb) cb();
+    }catch(e){ $("err").style.display="block"; $("err").textContent="⚠️ ประมวลผลรายชื่อไม่สำเร็จ: "+e.message; }
+  });
+}
+
+/* ---------- ปุ่มและคีย์ลัด ---------- */
+$("btnSpin").onclick=spin;
+$("btnReload").onclick=function(){ $("eyebrow").textContent="กำลังโหลดรายชื่อใหม่…"; load(); };
+$("selAmphoe").onchange=render;
+$("optNoRepeat").onchange=render;
+$("optShowUnit").onchange=render;
+$("btnClear").onclick=function(){
+  if(!PICKED.length) return;
+  if(confirm("ล้างประวัติการสุ่มทั้งหมด "+PICKED.length+" รายชื่อ เพื่อเริ่มรอบใหม่?")){
+    PICKED=[]; savePicked(); render();
+    $("eyebrow").textContent="เริ่มรอบใหม่แล้ว"; $("bigname").textContent="พร้อมสุ่มแล้ว";
+    $("sub").textContent=""; $("multi").innerHTML="";
+  }
+};
+$("btnCopy").onclick=function(){
+  if(!PICKED.length) return;
+  var txt=PICKED.map(function(p,i){ return (i+1)+". "+p.name+(p.amphoe?" ("+p.amphoe+")":""); }).join("\n");
+  var ok=function(){ $("btnCopy").textContent="คัดลอกแล้ว ✓"; setTimeout(function(){ $("btnCopy").textContent="คัดลอกรายชื่อ"; },1800); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok,function(){ prompt("คัดลอกข้อความนี้",txt); });
+  else prompt("คัดลอกข้อความนี้",txt);
+};
+function toggleFs(){
+  document.body.classList.toggle("fs");
+  if(document.fullscreenElement) document.exitFullscreen && document.exitFullscreen();
+  else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(function(){});
+}
+$("btnFs").onclick=toggleFs;
+addEventListener("keydown",function(e){
+  if(/^(INPUT|SELECT|TEXTAREA)$/.test((e.target.tagName||""))) return;
+  if(e.code==="Space"||e.key===" "){ e.preventDefault(); spin(); }
+  else if(e.key==="f"||e.key==="F"){ toggleFs(); }
+});
+load();
+setInterval(function(){ if(!SPINNING) load(); }, 120000);   // ดึงรายชื่อใหม่ทุก 2 นาที เผื่อมีคนตอบเพิ่ม
+})();
+</script>
+</body>
+</html>
