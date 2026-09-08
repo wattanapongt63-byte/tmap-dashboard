@@ -96,16 +96,32 @@ input[type=search],input[type=text]{font-family:inherit;font-size:14px;padding:8
 .pager button{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 11px}
 .tblwrap{max-height:620px;overflow:auto;border-radius:12px}
 .badge{font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.cmpTop{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px}
+.cmpStat{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.cmpStat .lab{font-size:12.5px;color:var(--muted)}
+.cmpStat .row{display:flex;align-items:baseline;gap:8px;margin-top:4px;flex-wrap:wrap}
+.cmpStat .arrow{color:var(--muted);font-size:15px}
+.cmpStat .v1,.cmpStat .v2{font-size:19px;font-weight:700}
+.delta{font-size:12.5px;font-weight:700;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.delta.up{background:rgba(5,150,105,.13);color:#059669}
+.delta.down{background:rgba(220,38,38,.12);color:#dc2626}
+.delta.flat{background:var(--line);color:var(--muted)}
+.qcmp{border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:7px;font-size:13.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.qcmp .qn{flex:none;width:22px;height:22px;border-radius:7px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700}
+.qcmp .lab{flex:1;min-width:160px;color:var(--ink)}
+.qcmp .vals{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.qcmp .vals b{color:var(--ink)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="topbar">
-    <h1>Dashboard สรุปการทำแบบทดสอบก่อนอบรม</h1>
+    <h1 id="mainTitle">Dashboard สรุปการทำแบบทดสอบก่อนอบรม</h1>
     <p>โครงการพัฒนาบุคลากรด้านการสร้าง Learning T-Map ปักหมุดแหล่งเรียนรู้คู่ชุมชน</p>
     <div class="bar">
       <span class="pill"><span class="dot"></span><span id="liveTxt">กำลังเชื่อมต่อ…</span></span>
       <span class="pill" id="updTxt">อัปเดตล่าสุด: -</span>
+      <span class="pill" id="roundHint" style="display:none"></span>
       <button id="btnRefresh">รีเฟรชเดี๋ยวนี้</button>
       <select id="selAuto" title="ความถี่รีเฟรชอัตโนมัติ">
         <option value="15">อัตโนมัติทุก 15 วิ</option>
@@ -114,6 +130,12 @@ input[type=search],input[type=text]{font-family:inherit;font-size:14px;padding:8
         <option value="300">อัตโนมัติทุก 5 นาที</option>
         <option value="0">ปิดอัตโนมัติ</option>
       </select>
+      <select id="selRound" title="แสดงเฉพาะรอบก่อน/หลังอบรม">
+        <option value="all">ทั้งหมด</option>
+        <option value="pre">เฉพาะก่อนอบรม</option>
+        <option value="post">เฉพาะหลังอบรม</option>
+      </select>
+      <button id="btnCutoff" title="ใช้เมื่อนำแบบทดสอบชุดเดิมมาทำซ้ำเป็นหลังอบรม">🕒 ตั้งเวลาแบ่งก่อน-หลัง</button>
       <button id="btnKey">ตั้งค่าเฉลย</button>
       <button id="btnCsv">ดาวน์โหลด CSV</button>
       <a href="./random.html" style="text-decoration:none"><button type="button">🎲 เกมสุ่มรายชื่อ</button></a>
@@ -122,6 +144,13 @@ input[type=search],input[type=text]{font-family:inherit;font-size:14px;padding:8
   <div class="err" id="err"></div>
   <div class="kpis" id="kpis"><div class="skel">กำลังโหลดข้อมูล…</div></div>
   <div class="grid">
+    <section class="card c12" id="cardCompare" hidden>
+      <h2>เปรียบเทียบผลก่อน-หลังอบรม</h2>
+      <p class="hint" id="cmpHint">แบบทดสอบชุดเดียวกันถูกนำมาทำซ้ำ ระบบแบ่งคำตอบตามเวลาที่ตั้งไว้ และจับคู่ผู้เข้าร่วมด้วยชื่อ เพื่อดูพัฒนาการรายบุคคล</p>
+      <div class="cmpTop" id="cmpTop"></div>
+      <div id="cmpQ"></div>
+      <div class="tblwrap" style="max-height:420px;margin-top:10px"><table id="cmpTbl"><thead></thead><tbody></tbody></table></div>
+    </section>
     <section class="card c6"><h2>การกระจายของคะแนน</h2><p class="hint" id="histHint">จำนวนผู้ตอบในแต่ละช่วงคะแนน</p><div id="hist"></div></section>
     <section class="card c6"><h2>จำนวนผู้ทำแบบทดสอบตามช่วงเวลา</h2><p class="hint" id="timeHint">ดูความคืบหน้าการเข้าทำแบบทดสอบ</p><div id="timeline"></div></section>
     <section class="card c12"><h2>ผลรายข้อ</h2><p class="hint" id="qHint">สัดส่วนการตอบแต่ละตัวเลือก และร้อยละที่ตอบถูก</p><div id="questions"></div></section>
@@ -153,6 +182,23 @@ input[type=search],input[type=text]{font-family:inherit;font-size:14px;padding:8
     </div>
   </div>
 </div>
+
+<div class="modal" id="cutModal">
+  <div class="sheet">
+    <h2 style="font-size:19px">ตั้งเวลาแบ่งก่อน-หลังอบรม</h2>
+    <p class="hint">ใช้เมื่อนำแบบทดสอบชุดเดิมมาให้ทำซ้ำเป็นแบบทดสอบหลังอบรม — ระบบจะแยกคำตอบตามเวลาที่ส่งให้อัตโนมัติ <b>ไม่ต้องลบข้อมูลเดิมในชีต</b> ข้อมูลก่อนเวลาที่ตั้งไว้ถือเป็น "ก่อนอบรม" ตั้งแต่เวลานั้นเป็นต้นไปถือเป็น "หลังอบรม"</p>
+    <div id="cutSuggest" class="hint" style="display:none;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px"></div>
+    <label style="display:block;font-size:13.5px;margin:12px 0 6px">เวลาเริ่มต้นของ "หลังอบรม"</label>
+    <input type="datetime-local" id="cutInput" style="width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-family:inherit;font-size:14px">
+    <div id="cutPreview" class="hint" style="margin-top:10px"></div>
+    <div class="tools" style="margin-top:16px">
+      <button class="btn" id="cutSave">บันทึก</button>
+      <button class="btn ghost" id="cutSuggestBtn" style="display:none">ใช้เวลาที่ระบบแนะนำ</button>
+      <button class="btn ghost" id="cutClear">ล้าง (ไม่แบ่งก่อน-หลัง)</button>
+      <button class="btn ghost" id="cutClose">ปิด</button>
+    </div>
+  </div>
+</div>
 <script>
 (function(){
 "use strict";
@@ -171,6 +217,42 @@ function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){retu
 function num(n,d){ if(n==null||isNaN(n))return "-"; return n.toLocaleString("th-TH",{minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
 function pct(a,b){ return b? Math.round(a/b*1000)/10 : 0; }
 function timeStr(d){ return d? d.toLocaleString("th-TH",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "-"; }
+function nkey(s){ return String(s==null?"":s).replace(/[\s ]+/g,""); }   // เทียบชื่อโดยไม่สนช่องว่าง (กันชื่อเว้นวรรคซ้อนในชีต)
+
+/* ---------- แบ่งข้อมูลก่อน/หลังอบรม (เผื่อนำแบบทดสอบชุดเดิมมาทำซ้ำ) ---------- */
+var CUTOFF_STORE = "tmap_cutoff_v1";
+var CUTOFF = (function(){
+  var fromUrl = qp.get("cutoff");
+  if(fromUrl && !isNaN(+fromUrl)){ try{ localStorage.setItem(CUTOFF_STORE, fromUrl); }catch(e){} return +fromUrl; }
+  try{ var v = localStorage.getItem(CUTOFF_STORE); return v ? +v : null; }catch(e){ return null; }
+})();
+function saveCutoff(v){ CUTOFF = v; try{ if(v==null) localStorage.removeItem(CUTOFF_STORE); else localStorage.setItem(CUTOFF_STORE, String(v)); }catch(e){} }
+function roundOf(r){ if(CUTOFF==null || !r.ts) return null; return r.ts.getTime() >= CUTOFF ? "post" : "pre"; }
+function withRecs(M, recs){ var out={}; for(var k in M) out[k]=M[k]; out.recs=recs; return out; }
+function currentView(M){
+  if(CUTOFF==null || STATE.round==="all") return M;
+  return withRecs(M, M.recs.filter(function(r){ return roundOf(r)===STATE.round; }));
+}
+function suggestCutoff(M){
+  var ts = M.recs.map(function(r){ return r.ts; }).filter(Boolean).sort(function(a,b){ return a-b; });
+  if(ts.length<2) return null;
+  var bestGap=-1, bestIdx=-1;
+  for(var i=1;i<ts.length;i++){ var gap=ts[i].getTime()-ts[i-1].getTime(); if(gap>bestGap){ bestGap=gap; bestIdx=i; } }
+  if(bestGap < 2*3600e3) return null;   // ต้องห่างกันอย่างน้อย 2 ชั่วโมงจึงถือว่าเป็นคนละรอบ
+  return { time:new Date((ts[bestIdx-1].getTime()+ts[bestIdx].getTime())/2), gapHours:Math.round(bestGap/3600e3*10)/10, before:ts[bestIdx-1], after:ts[bestIdx] };
+}
+function toLocalInputValue(d){ function p(n){ return (n<10?"0":"")+n; } return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes()); }
+function fromLocalInputValue(s){ if(!s) return null; var d=new Date(s); return isNaN(d.getTime())?null:d.getTime(); }
+function pairByName(M){
+  var pre={}, post={};
+  M.recs.forEach(function(r){
+    var rd=roundOf(r); if(!rd) return;
+    var k=nkey(r.name); var bucket = rd==="pre"?pre:post;
+    if(!bucket[k] || (r.ts && (!bucket[k].ts || r.ts>bucket[k].ts))) bucket[k]=r;
+  });
+  var names={}; Object.keys(pre).forEach(function(k){names[k]=1;}); Object.keys(post).forEach(function(k){names[k]=1;});
+  return Object.keys(names).map(function(k){ return { key:k, pre:pre[k]||null, post:post[k]||null }; });
+}
 
 /* ---------- ดึงข้อมูลแบบ JSONP (ใช้ได้ทั้งเปิดไฟล์ในเครื่องและบนเว็บโฮสต์) ---------- */
 var cbSeq = 0;
@@ -287,7 +369,7 @@ function effectiveKey(M,stats){
 }
 
 /* ---------- ส่วนแสดงผล ---------- */
-var STATE = { sortKey:"score", sortDir:-1, page:1, q:"", groupIdx:0, lastCount:-1 };
+var STATE = { sortKey:"score", sortDir:-1, page:1, q:"", groupIdx:0, lastCount:-1, round:"all" };
 
 function renderKPI(M){
   var scored = M.recs.filter(function(r){ return typeof r.score==="number"; });
@@ -492,6 +574,87 @@ function renderTable(M){
   });
 }
 
+/* ---------- เปรียบเทียบก่อน-หลังอบรม ---------- */
+function avgOf(recs){ var s=recs.filter(function(r){ return typeof r.score==="number"; }); return s.length? s.reduce(function(a,r){return a+r.score;},0)/s.length : null; }
+function passOf(recs, max){ var s=recs.filter(function(r){ return typeof r.score==="number"; }); return s.length? pct(s.filter(function(r){ return r.score>=max*PASS_RATIO; }).length, s.length) : null; }
+function deltaChip(delta, unit){
+  var cls = delta>0.001?"up":(delta<-0.001?"down":"flat");
+  var sign = delta>0?"+":"";
+  return '<span class="delta '+cls+'">'+sign+(Math.round(delta*10)/10)+(unit||"")+'</span>';
+}
+function renderCompare(M, keyInfo){
+  var card = $("cardCompare");
+  if(CUTOFF==null){ card.hidden = true; return; }
+  var preRecs = M.recs.filter(function(r){ return roundOf(r)==="pre"; });
+  var postRecs = M.recs.filter(function(r){ return roundOf(r)==="post"; });
+  if(!preRecs.length || !postRecs.length){ card.hidden = true; return; }
+  card.hidden = false;
+
+  var avgPre=avgOf(preRecs), avgPost=avgOf(postRecs);
+  var passPre=passOf(preRecs,M.maxScore), passPost=passOf(postRecs,M.maxScore);
+  var pairs = pairByName(M);
+  var matched = pairs.filter(function(p){ return p.pre && p.post && typeof p.pre.score==="number" && typeof p.post.score==="number"; });
+  var onlyPre = pairs.filter(function(p){ return p.pre && !p.post; }).length;
+  var onlyPost = pairs.filter(function(p){ return !p.pre && p.post; }).length;
+
+  var top = '';
+  top += '<div class="cmpStat"><div class="lab">คะแนนเฉลี่ย</div><div class="row"><span class="v1">'+(avgPre==null?"-":Math.round(avgPre*100)/100)+'</span><span class="arrow">→</span><span class="v2">'+(avgPost==null?"-":Math.round(avgPost*100)/100)+'</span>'+
+    (avgPre!=null&&avgPost!=null? deltaChip(avgPost-avgPre) : '')+'</div><div class="lab">จากคะแนนเต็ม '+M.maxScore+'</div></div>';
+  top += '<div class="cmpStat"><div class="lab">ผ่านเกณฑ์ '+(PASS_RATIO*100)+'%</div><div class="row"><span class="v1">'+(passPre==null?"-":passPre+"%")+'</span><span class="arrow">→</span><span class="v2">'+(passPost==null?"-":passPost+"%")+'</span>'+
+    (passPre!=null&&passPost!=null? deltaChip(passPost-passPre,"%") : '')+'</div><div class="lab">ของผู้ทำแบบทดสอบแต่ละรอบ</div></div>';
+  top += '<div class="cmpStat"><div class="lab">จำนวนผู้เข้าร่วม</div><div class="row"><span class="v1">'+preRecs.length+'</span><span class="arrow">→</span><span class="v2">'+postRecs.length+'</span></div>'+
+    '<div class="lab">จับคู่ชื่อได้ '+matched.length+' คน'+((onlyPre||onlyPost)? (' • เฉพาะก่อน '+onlyPre+' / เฉพาะหลัง '+onlyPost+' คน') : '')+'</div></div>';
+  $("cmpTop").innerHTML = top;
+
+  // เปรียบเทียบรายข้อ (ใช้เฉลยชุดเดียวกันกับทั้งสองรอบ เพราะเป็นข้อสอบชุดเดียวกัน)
+  var key = keyInfo.key;
+  var statsPre = optionStats(withRecs(M,preRecs)), statsPost = optionStats(withRecs(M,postRecs));
+  $("cmpQ").innerHTML = M.qLabels.map(function(lab,qi){
+    var k = key[qi];
+    if(!k) return '';
+    var totPre = statsPre[qi].reduce(function(a,o){return a+o.n;},0), rightPre = (statsPre[qi].filter(function(o){return o.opt===k;})[0]||{n:0}).n;
+    var totPost = statsPost[qi].reduce(function(a,o){return a+o.n;},0), rightPost = (statsPost[qi].filter(function(o){return o.opt===k;})[0]||{n:0}).n;
+    var pPre = totPre? pct(rightPre,totPre) : null, pPost = totPost? pct(rightPost,totPost) : null;
+    return '<div class="qcmp"><span class="qn">'+(qi+1)+'</span><span class="lab" title="'+esc(lab)+'">'+esc(lab.length>60?lab.slice(0,60)+"…":lab)+'</span>'+
+      '<span class="vals">ก่อน <b>'+(pPre==null?"-":pPre+"%")+'</b> → หลัง <b>'+(pPost==null?"-":pPost+"%")+'</b> '+
+      ((pPre!=null&&pPost!=null)? deltaChip(pPost-pPre,"%") : '')+'</span></div>';
+  }).join("");
+
+  // ตารางรายบุคคลที่ทำครบทั้งสองรอบ
+  var amI = M.pLabels.findIndex(function(l){ return /อำเภอ/.test(l); });
+  var rows = matched.map(function(p){
+    return { name:p.pre.name, unit: amI>=0? p.pre.profile[amI] : "", pre:p.pre.score, post:p.post.score, delta:p.post.score-p.pre.score };
+  }).sort(function(a,b){ return b.delta-a.delta; });
+  $("cmpTbl").innerHTML =
+    '<thead><tr><th>#</th><th>ชื่อ</th><th>หน่วยงาน</th><th>ก่อน</th><th>หลัง</th><th>เปลี่ยนแปลง</th></tr></thead>' +
+    '<tbody>' + (rows.length ? rows.map(function(r,i){
+      return '<tr><td class="rank">'+(i+1)+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.unit)+'</td>'+
+        '<td>'+r.pre+' / '+M.maxScore+'</td><td>'+r.post+' / '+M.maxScore+'</td><td>'+deltaChip(r.delta)+'</td></tr>';
+    }).join("") : '<tr><td colspan="6" class="skel">ยังไม่มีคนที่ทำครบทั้งสองรอบ (ชื่ออาจสะกดไม่ตรงกัน)</td></tr>') + '</tbody>';
+}
+
+function renderRoundUI(M){
+  var nPre = M.recs.filter(function(r){ return roundOf(r)==="pre"; }).length;
+  var nPost = M.recs.filter(function(r){ return roundOf(r)==="post"; }).length;
+  var sel = $("selRound");
+  sel.options[0].textContent = "ทั้งหมด ("+M.recs.length+" คน)";
+  sel.options[1].textContent = "เฉพาะก่อนอบรม ("+nPre+" คน)";
+  sel.options[2].textContent = "เฉพาะหลังอบรม ("+nPost+" คน)";
+  var noCutoff = (CUTOFF==null);
+  sel.options[1].disabled = noCutoff;
+  sel.options[2].disabled = noCutoff;
+  if(noCutoff && STATE.round!=="all"){ STATE.round="all"; }
+  sel.value = STATE.round;
+  var hint = $("roundHint");
+  if(noCutoff){ hint.style.display = "none"; }
+  else { hint.style.display = "inline-flex"; hint.textContent = "แบ่งข้อมูลที่ " + timeStr(new Date(CUTOFF)); }
+}
+function updateTitle(){
+  var t = STATE.round==="pre" ? "ก่อนอบรม" : (STATE.round==="post" ? "หลังอบรม" : (CUTOFF!=null ? "ก่อน-หลังอบรม" : "ก่อนอบรม"));
+  $("mainTitle").textContent = "Dashboard สรุปการทำแบบทดสอบ" + t;
+  document.title = "Dashboard สรุปการทำแบบทดสอบ" + t + " | Learning T-Map";
+}
+
 /* ---------- เฉลย: หน้าต่างตั้งค่า ---------- */
 function openKeyModal(M, stats, keyInfo){
   var manual = loadKey() || [];
@@ -511,12 +674,14 @@ function closeKeyModal(){ $("modal").classList.remove("on"); }
 /* ---------- ส่งออก CSV ---------- */
 function exportCsv(M, keyInfo){
   var key = keyInfo.key;
-  var head = ["ลำดับ","เวลาที่ส่ง",M.nameLabel].concat(M.pLabels, ["คะแนน","คะแนนเต็ม","ร้อยละ","ผลการประเมิน"],
+  var hasRound = CUTOFF!=null;
+  var head = ["ลำดับ","เวลาที่ส่ง"].concat(hasRound?["รอบ"]:[], [M.nameLabel]).concat(M.pLabels, ["คะแนน","คะแนนเต็ม","ร้อยละ","ผลการประเมิน"],
     M.qLabels.map(function(_,i){ return "ข้อ "+(i+1)+" (ตอบ)"; }),
     M.qLabels.map(function(_,i){ return "ข้อ "+(i+1)+" (ถูก/ผิด)"; }));
   var rows = M.recs.slice().sort(function(a,b){ return (b.score||0)-(a.score||0); }).map(function(r,i){
     var p = (typeof r.score==="number") ? Math.round(r.score/M.maxScore*1000)/10 : "";
-    return [i+1, r.ts?r.ts.toLocaleString("th-TH"):"", r.name].concat(r.profile,
+    var roundLabel = roundOf(r)==="pre"?"ก่อนอบรม":(roundOf(r)==="post"?"หลังอบรม":"ไม่ระบุ");
+    return [i+1, r.ts?r.ts.toLocaleString("th-TH"):""].concat(hasRound?[roundLabel]:[], [r.name]).concat(r.profile,
       [r.score==null?"":r.score, M.maxScore, p, (typeof r.score==="number" ? (r.score>=M.maxScore*PASS_RATIO?"ผ่าน":"ไม่ผ่าน") : "")],
       r.answers.map(function(a){ return a.opt || a.raw; }),
       r.answers.map(function(a,qi){ return key[qi] ? (a.opt===key[qi]?"ถูก":"ผิด") : ""; }));
@@ -527,25 +692,35 @@ function exportCsv(M, keyInfo){
   var blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"});
   var a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "สรุปผลแบบทดสอบก่อนอบรม-TMap-" + new Date().toISOString().slice(0,10) + ".csv";
+  var suffix = STATE.round==="pre"?"-ก่อนอบรม":(STATE.round==="post"?"-หลังอบรม":"");
+  a.download = "สรุปผลแบบทดสอบ"+suffix+"-TMap-" + new Date().toISOString().slice(0,10) + ".csv";
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
 }
 
 /* ---------- วงจรหลัก ---------- */
-var LAST = { M:null, stats:null, keyInfo:null };
+var LAST = { M:null, statsFull:null, keyInfo:null };
 function renderAll(M){
   var stats = optionStats(M);
   var keyInfo = effectiveKey(M, stats);
-  LAST = { M:M, stats:stats, keyInfo:keyInfo };
+  LAST = { M:M, statsFull:stats, keyInfo:keyInfo };
   if(!renderAll.inited){
     var pref = M.pLabels.findIndex(function(l){ return /อำเภอ/.test(l); });
     STATE.groupIdx = pref>=0 ? pref : 0;
     renderAll.inited = true;
   }
-  renderKPI(M); renderHist(M); renderTimeline(M);
-  renderQuestions(M, stats, keyInfo);
-  renderGroups(M); renderExtra(M); renderTable(M);
+  renderView();
+  renderCompare(M, keyInfo);
+}
+function renderView(){
+  if(!LAST.M) return;
+  var view = currentView(LAST.M);
+  var statsView = (view===LAST.M) ? LAST.statsFull : optionStats(view);
+  renderKPI(view); renderHist(view); renderTimeline(view);
+  renderQuestions(view, statsView, LAST.keyInfo);
+  renderGroups(view); renderExtra(view); renderTable(view);
+  renderRoundUI(LAST.M);
+  updateTitle();
 }
 function tick(silent){
   if(!silent) $("liveTxt").textContent = "กำลังอัปเดต…";
@@ -574,10 +749,11 @@ function setAuto(sec){
 /* ---------- เชื่อมปุ่มต่าง ๆ ---------- */
 $("btnRefresh").onclick = function(){ tick(false); };
 $("selAuto").onchange = function(){ setAuto(+this.value); };
-$("selGroup").onchange = function(){ if(LAST.M){ renderGroups(LAST.M); renderKPI(LAST.M); } };
-$("q").oninput = function(){ STATE.q = this.value; STATE.page = 1; if(LAST.M) renderTable(LAST.M); };
-$("btnCsv").onclick = function(){ if(LAST.M) exportCsv(LAST.M, LAST.keyInfo); };
-$("btnKey").onclick = function(){ if(LAST.M) openKeyModal(LAST.M, LAST.stats, LAST.keyInfo); };
+$("selGroup").onchange = function(){ if(LAST.M){ var v=currentView(LAST.M); renderGroups(v); renderKPI(v); } };
+$("selRound").onchange = function(){ STATE.round = this.value; STATE.page = 1; renderView(); };
+$("q").oninput = function(){ STATE.q = this.value; STATE.page = 1; if(LAST.M) renderTable(currentView(LAST.M)); };
+$("btnCsv").onclick = function(){ if(LAST.M) exportCsv(currentView(LAST.M), LAST.keyInfo); };
+$("btnKey").onclick = function(){ if(LAST.M) openKeyModal(LAST.M, LAST.statsFull, LAST.keyInfo); };
 $("keyClose").onclick = closeKeyModal;
 $("modal").onclick = function(e){ if(e.target === $("modal")) closeKeyModal(); };
 $("keySave").onclick = function(){
@@ -589,6 +765,44 @@ $("keyAuto").onclick = function(){
   try{ localStorage.removeItem(KEY_STORE); }catch(e){}
   closeKeyModal(); if(LAST.M) renderAll(LAST.M);
 };
+
+/* ---------- ปุ่มตั้งเวลาแบ่งก่อน-หลังอบรม ---------- */
+function openCutModal(){
+  var sug = LAST.M ? suggestCutoff(LAST.M) : null;
+  $("cutInput").value = CUTOFF!=null ? toLocalInputValue(new Date(CUTOFF)) : (sug ? toLocalInputValue(sug.time) : "");
+  if(sug){
+    $("cutSuggest").style.display = "block";
+    $("cutSuggest").innerHTML = "ระบบพบช่วงเวลาห่างกัน <b>"+sug.gapHours+" ชั่วโมง</b> ระหว่าง "+esc(timeStr(sug.before))+" กับ "+esc(timeStr(sug.after))+" ซึ่งน่าจะเป็นจุดแบ่งก่อน-หลังอบรม";
+    $("cutSuggestBtn").style.display = "";
+    $("cutSuggestBtn").onclick = function(){ $("cutInput").value = toLocalInputValue(sug.time); updateCutPreview(); };
+  } else {
+    $("cutSuggest").style.display = "none";
+    $("cutSuggestBtn").style.display = "none";
+  }
+  updateCutPreview();
+  $("cutModal").classList.add("on");
+}
+function closeCutModal(){ $("cutModal").classList.remove("on"); }
+function updateCutPreview(){
+  var v = fromLocalInputValue($("cutInput").value);
+  if(v==null || !LAST.M){ $("cutPreview").textContent = ""; return; }
+  var nPre = LAST.M.recs.filter(function(r){ return r.ts && r.ts.getTime()<v; }).length;
+  var nPost = LAST.M.recs.filter(function(r){ return r.ts && r.ts.getTime()>=v; }).length;
+  $("cutPreview").innerHTML = "จะได้ <b>ก่อนอบรม "+nPre+" คน</b> และ <b>หลังอบรม "+nPost+" คน</b>";
+}
+$("btnCutoff").onclick = openCutModal;
+$("cutInput").addEventListener("input", updateCutPreview);
+$("cutClose").onclick = closeCutModal;
+$("cutModal").onclick = function(e){ if(e.target === $("cutModal")) closeCutModal(); };
+$("cutSave").onclick = function(){
+  var v = fromLocalInputValue($("cutInput").value);
+  if(v==null){ alert("กรุณาระบุวันเวลาให้ถูกต้อง"); return; }
+  saveCutoff(v); STATE.round="all"; closeCutModal(); if(LAST.M) renderAll(LAST.M);
+};
+$("cutClear").onclick = function(){
+  saveCutoff(null); STATE.round="all"; closeCutModal(); if(LAST.M) renderAll(LAST.M);
+};
+
 document.addEventListener("visibilitychange", function(){ if(!document.hidden) tick(true); });
 
 tick(false);
